@@ -16,20 +16,20 @@ latitude: 0.97
 altitude: 50.0
 soil:
   ini_root_depth: 100.0
-  field_capacity: 0.23
+  field_capacity: 0.25
   wilting_point_1: 0.05
   thickness_1: 200.0
   wilting_point_2: 0.05
   thickness_2: 2000.0
-  initial_water_content: 0.15
+  initial_water_content: 0.25
   Kc: 1.0
   evaporation_threshold: 0.5
   transpiration_threshold: 0.5
 phyllochron:
   age_palm_maturity: 2920
-  threshold_ftsw_stress: 0.3
   production_speed_initial: 0.0050
   production_speed_mature: 0.0040
+  threshold_ftsw: 0.3
   # production_speed_initial: 0.0111
   # production_speed_mature: 0.0074
 lma_max: 200.0
@@ -120,4 +120,4 @@ biomass_dry:
   Stem: 0.1
   RootSystem: 12.5
   Internode: 2.0
-seed_reserve: 100
+seed_reserve: 100.0
