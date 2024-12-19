@@ -10,12 +10,14 @@ includet("mapping.jl")
 meteo = CSV.read("0-data/Meteo_predictions_all_sites_cleaned.csv", DataFrame)
 meteos = [Weather(i) for i in groupby(meteo, :Site)]
 
-# df_plot = transform(groupby(meteo, :Site), :Precipitations => cumsum => :cumulative_precipitations)
-# data(df_plot) * mapping(:date, :Precipitations, color=:Site => nonnumeric) * visual(Lines) |> draw()
-# data(df_plot) * mapping(:date, :cumulative_precipitations, color=:Site => nonnumeric) * visual(Lines) |> draw()
+df_plot = transform(groupby(meteo, :Site), :Precipitations => cumsum => :cumulative_precipitations, :Tmin => cumsum => :Tmin_cumulative, :Tmax => cumsum => :Tmax_cumulative)
+data(df_plot) * mapping(:date, :Precipitations, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_plot) * mapping(:date, :cumulative_precipitations, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_plot) * mapping(:date, :Tmin_cumulative, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_plot) * mapping(:date, :Tmax_cumulative, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 begin
-    params_default = YAML.load_file("0-data/xpalm_parameters_new2.yml", dicttype=Dict{Symbol,Any})
+    params_default = YAML.load_file("0-data/xpalm_parameters.yml", dicttype=Dict{Symbol,Any})
 
     params_SMSE = copy(params_default)
     params_SMSE[:latitude] = 2.93416
@@ -45,7 +47,7 @@ begin
         "Plant" => (
             :TEff, :plant_age, :ftsw, :biomass_bunch_harvested, :Rm, :aPPFD, :carbon_allocation, :biomass_bunch_harvested, :biomass_fruit_harvested,
             :carbon_assimilation, :reserve, :carbon_demand, :carbon_offer_after_allocation, :carbon_offer_after_rm, :plant_leaf_area,
-            :n_bunches_harvested, :biomass_bunch_harvested_cum, :n_bunches_harvested_cum, :TEff, :phytomer_count, :production_speed, :phylo_slow,
+            :n_bunches_harvested, :biomass_bunch_harvested_cum, :n_bunches_harvested_cum, :TEff, :phytomer_count, :production_speed,
         ),
         "RootSystem" => (:Rm,),
         "Soil" => (:ftsw, :root_depth, :transpiration, :qty_H2O_C1, :qty_H2O_C2, :aPPFD),
@@ -92,11 +94,7 @@ data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_emmitted, colo
 #! n leaves should be around 150 at 100MAP, 200-250 at 150MAP
 data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_count, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_plant) * mapping(:timestep, :production_speed, color=:Site => nonnumeric) * visual(Lines) |> draw()
-data(dfs_plant) * mapping(:timestep, :phylo_slow, color=:Site => nonnumeric) * visual(Lines) |> draw()
-
-
 data(dfs_plant) * mapping(:timestep, :TEff, color=:Site => nonnumeric) * visual(Lines) |> draw()
-
 
 
 data(dfs_plant) * mapping(:timestep, :carbon_assimilation, color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -160,13 +158,6 @@ data(dfs_soil) * mapping(:timestep, :root_depth, color=:Site => nonnumeric) * vi
 data(dfs_soil) * mapping(:timestep, :qty_H2O_C1, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_soil) * mapping(:timestep, :qty_H2O_C2, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
-tree_ei = 1.0 - (dfs_soil.Ri_PAR_f .* c.J_to_umol .- dfs_soil.aPPFD) ./ (dfs_soil.Ri_PAR_f .* c.J_to_umol)
-scatter(tree_ei)
-
-tree_ei = 1.0 - (dfs_soil.Ri_PAR_f * c.J_to_umol - dfs_soil.aPPFD) / (dfs_soil.Ri_PAR_f * c.J_to_umol)
-f, ax, p = lines(dfs_soil.Ri_PAR_f .* c.J_to_umol)
-lines!(ax, dfs_soil.aPPFD, color=:red)
-f
 data(filter(row -> row[:organ] == "Female" && row.Site == "SMSE", dfs_all)) * mapping(:timestep, :Rm => (x -> isinf(x) ? 0.0 : x) => "Rm", marker=:Site => nonnumeric, color=:node => nonnumeric) * visual(Scatter) |> draw()
 
 df_female = filter(row -> row[:organ] == "Female" && row.Site == "PR", dfs_all)
