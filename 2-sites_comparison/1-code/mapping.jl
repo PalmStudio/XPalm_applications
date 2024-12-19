@@ -18,10 +18,10 @@ function xpalm_mapping(p)
                 ),
                 mapping=[:ftsw => "Soil",],
             ),
+            # XPalm.DailyDegreeDays(),
             XPalm.DailyPlantAgeModel(),
             XPalm.PhyllochronModel(
                 p.parameters[:phyllochron][:age_palm_maturity],
-                p.parameters[:phyllochron][:threshold_ftsw_stress],
                 p.parameters[:phyllochron][:production_speed_initial],
                 p.parameters[:phyllochron][:production_speed_mature],
             ),
