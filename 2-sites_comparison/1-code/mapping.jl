@@ -18,7 +18,6 @@ function xpalm_mapping(p)
                 ),
                 mapping=[:ftsw => "Soil",],
             ),
-            # XPalm.DailyDegreeDays(),
             XPalm.DailyPlantAgeModel(),
             XPalm.PhyllochronModel(
                 p.parameters[:phyllochron][:age_palm_maturity],
@@ -41,7 +40,10 @@ function xpalm_mapping(p)
                 model=XPalm.SceneToPlantLightPartitioning(p.parameters[:scene_area]),
                 mapping=[:aPPFD_scene => "Scene" => :aPPFD, :scene_leaf_area => "Scene"],
             ),
-            XPalm.RUE_FTSW(p.parameters[:RUE], p.parameters[:threshold_ftsw]),
+            MultiScaleModel(
+                model=XPalm.RUE_FTSW(p.parameters[:RUE], p.parameters[:threshold_ftsw]),
+                mapping=[:ftsw => "Soil",],
+            ),
             XPalm.CarbonOfferRm(),
             MultiScaleModel(
                 model=XPalm.OrgansCarbonAllocationModel(p.parameters[:carbon_demand][:reserves][:cost_reserve_mobilization]),
