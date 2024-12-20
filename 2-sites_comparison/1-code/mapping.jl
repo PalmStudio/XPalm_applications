@@ -12,12 +12,7 @@ function xpalm_mapping(p)
             XPalm.GraphNodeCount(length(p.mtg)), # to have the `graph_node_count` variable initialised in the status
         ),
         "Plant" => (
-            MultiScaleModel(
-                model=XPalm.DegreeDaysFTSW(
-                    threshold_ftsw_stress=p.parameters[:phyllochron][:threshold_ftsw_stress],
-                ),
-                mapping=[:ftsw => "Soil",],
-            ),
+            XPalm.DailyDegreeDays(),
             XPalm.DailyPlantAgeModel(),
             XPalm.PhyllochronModel(
                 p.parameters[:phyllochron][:age_palm_maturity],
