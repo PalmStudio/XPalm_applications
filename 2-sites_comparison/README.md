@@ -19,7 +19,8 @@ Following this hypothesis, we should not apply the FTSW stress to the phyllochro
 
 ### To do
 
-- [ ] Check that un-opened leaves are not counted in the LAI: see https://github.com/PalmStudio/XPalm.jl/pull/24
+- [ ] See issue: https://github.com/PalmStudio/XPalm.jl/issues/27
+- [x] Check that un-opened leaves are not counted in the LAI: see https://github.com/PalmStudio/XPalm.jl/pull/24
 - [ ] The stresses from the FTSW are applied in many places, but it could be applied twice because it is already applied to `TEff`. This was the case with the phyllochron were we had phylo_slow that represented the stress effect on the phyllochron, and we also had TEff. We should work on that. We basically have two solutions:
   1. We could remove the stress from the TEff and keep it only in the phyllochron and other processes directly. This would probably be the most logical solution, as it would allow to apply different stresses to different processes, and to modulate the effect of stresses as we want.
   2. We could only use the TEff modulated by ftsw, it would simplify the code of many models, but we can't apply a different stress to the different processes then.
