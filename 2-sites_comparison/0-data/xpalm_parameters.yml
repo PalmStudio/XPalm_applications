@@ -27,9 +27,11 @@ soil:
   transpiration_threshold: 0.5
 phyllochron:
   age_palm_maturity: 2920
-  production_speed_initial: 0.0050
-  production_speed_mature: 0.0040
+  # production_speed_initial: 0.0050
+  # production_speed_mature: 0.0040
   threshold_ftsw_stress: 0.3
+  production_speed_initial: 0.008
+  production_speed_mature: 0.005
   # production_speed_initial: 0.0111
   # production_speed_mature: 0.0074
 lma_max: 200.0
@@ -82,7 +84,7 @@ potential_area:
   leaf_area_first_leaf: 0.02
   leaf_area_mature_leaf: 12.0
   age_first_mature_leaf: 2920
-  inflexion_index: 700.0
+  inflexion_index: 500.0
   slope: 100.0
 k: 0.5
 SRL: 0.4

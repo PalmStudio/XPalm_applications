@@ -85,6 +85,8 @@ data(dfs_scene) * mapping(:timestep, :aPPFD => "Absorbed PPFD (MJ m⁻²[soil] d
 dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
 dfs_plant_month = combine(
     groupby(dfs_plant, [:Site, :months_after_planting]),
+    :TEff => sum => :TEff,
+    :timestep => (x -> x[end] - x[1] + 1) => :timestep,
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested_monthly,
     :biomass_bunch_harvested_cum => last => :biomass_bunch_harvested_cum,
     :n_bunches_harvested => sum => :n_bunches_harvested_monthly,
@@ -100,7 +102,10 @@ data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_count, color=:
 data(dfs_plant) * mapping(:timestep, :production_speed, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_plant) * mapping(:timestep, :TEff, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
-combine(groupby(dfs_plant_month, :Site), :months_after_planting => last => :months_after_planting, :phytomer_count => maximum)
+df_phytomer_count = combine(groupby(dfs_plant_month, :Site), :months_after_planting => last, :phytomer_count => maximum, :TEff => sum, :timestep => sum, renamecols=false)
+df_phytomer_count.phytomer_per_TT = df_phytomer_count.phytomer_count ./ df_phytomer_count.TEff
+df_phytomer_count.phytomer_per_day = df_phytomer_count.phytomer_count ./ df_phytomer_count.timestep
+df_phytomer_count.days_per_phytomer = df_phytomer_count.timestep ./ df_phytomer_count.phytomer_count
 
 data(dfs_plant) * mapping(:timestep, :carbon_assimilation, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_plant) * mapping(:timestep, :Rm, color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -259,9 +264,11 @@ leaves_emitted_per_site = combine(groupby(df_leaves_opened, :Site), [:leaves_emi
 
 #! Number of leaves opened + pruned should be around 150 at 100MAP, 200-250 at 150MAP:
 data(df_leaves_opened) * mapping(:months_after_planting, :leaves_emitted, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-leaves_eimmited_at_100MAP = filter(row -> row.months_after_planting == 100, df_leaves_opened).leaves_emitted |> mean
-@test leaves_eimmited_at_100MAP > 140 && leaves_eimmited_at_100MAP < 160
-
+leaves_emmited_at_100MAP = filter(row -> row.months_after_planting == 100, df_leaves_opened).leaves_emitted |> mean
+leaves_emmited_at_0MAP = filter(row -> row.months_after_planting == 0, df_leaves_opened).leaves_emitted |> mean
+# Leaves emmitted is a cumulative value, so we need to substract the value at 0MAP to get the number of leaves emmited between 0 and 100MAP
+leaves_emmited_at_100MAP -= leaves_emmited_at_0MAP
+@test leaves_emmited_at_100MAP > 140 && leaves_emmited_at_100MAP < 160
 
 data(df_leaves_opened) * mapping(:timestep, :leaves_opened, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_leaves_opened) * mapping(:timestep, :leaves_pruned, color=:Site => nonnumeric) * visual(Scatter) |> draw()
