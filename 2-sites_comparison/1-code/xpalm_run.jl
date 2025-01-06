@@ -1,7 +1,8 @@
 using XPalm, CSV, DataFrames, YAML
 using CairoMakie, AlgebraOfGraphics
 import PlantSimEngine: MultiScaleModel, PreviousTimeStep
-using XPalm.PlantMeteo
+using XPalm.Models
+using PlantMeteo
 using Dates
 using Statistics
 
@@ -36,8 +37,8 @@ begin
 
     out_vars = Dict{String,Any}(
         "Scene" => (:lai, :aPPFD),
-        "Phytomer" => (:rank, :state),
-        "Leaf" => (:Rm, :TEff, :TT_since_init, :potential_area, :carbon_demand, :carbon_allocation, :biomass, :final_potential_area, :increment_potential_area, :initiation_age, :leaf_area, :reserve, :rank, :leaf_state),
+        "Phytomer" => (:state,),
+        "Leaf" => (:Rm, :TEff, :TT_since_init, :maturity, :potential_area, :carbon_demand, :carbon_allocation, :biomass, :final_potential_area, :increment_potential_area, :initiation_age, :leaf_area, :reserve, :rank, :state),
         "Internode" => (
             :Rm, :carbon_allocation, :carbon_demand, :potential_height, :potential_radius, :potential_volume, :biomass, :reserve,
             :final_potential_height, :final_potential_radius, :initiation_age, :TT_since_init, :final_potential_height, :final_potential_radius
@@ -46,7 +47,7 @@ begin
         "Female" => (:Rm, :carbon_demand, :carbon_allocation, :biomass, :TEff, :fruits_number, :state, :carbon_demand_non_oil, :carbon_demand_oil, :carbon_demand_stalk, :biomass_fruits, :biomass_stalk, :TT_since_init),
         "Plant" => (
             :TEff, :plant_age, :ftsw, :biomass_bunch_harvested, :Rm, :aPPFD, :carbon_allocation, :biomass_bunch_harvested, :biomass_fruit_harvested,
-            :carbon_assimilation, :reserve, :carbon_demand, :carbon_offer_after_allocation, :carbon_offer_after_rm, :plant_leaf_area,
+            :carbon_assimilation, :reserve, :carbon_demand, :carbon_offer_after_allocation, :carbon_offer_after_rm, :leaf_area,
             :n_bunches_harvested, :biomass_bunch_harvested_cum, :n_bunches_harvested_cum, :TEff, :phytomer_count, :production_speed,
         ),
         "RootSystem" => (:Rm,),
@@ -216,6 +217,38 @@ scatter(df_female_other.TT_since_init, df_female_other.fruits_number, color=:gre
 
 
 df_leaf = filter(row -> row[:organ] == "Leaf", dfs_all)
+#! control that the number of leaves at rank > 1 increases each step
+df_leaves_rank_sup_1 = combine(groupby(df_leaf, [:Site, :timestep]), :rank => (r -> length(filter(x -> x > 0, r))) => :rank)
+data(df_leaves_rank_sup_1) * mapping(:timestep, :rank, color=:Site => nonnumeric) * visual(Scatter) |> draw()
+
+#! control that the number of leaves Opened is steady at mature stage, and is == to rank_leaf_pruning parameter
+df_leaves_opened = combine(
+    groupby(df_leaf, [:Site, :timestep]),
+    :state => (s -> length(filter(x -> x == "Opened", s))) => :leaves_opened,
+    :state => (s -> length(filter(x -> x == "Pruned", s))) => :leaves_pruned,
+    :state => (s -> length(filter(x -> x == "undetermined", s))) => :leaves_undetermined,
+)
+data(df_leaves_opened) * mapping(:timestep, :leaves_opened, color=:Site => nonnumeric) * visual(Scatter) |> draw()
+data(df_leaves_opened) * mapping(:timestep, :leaves_pruned, color=:Site => nonnumeric) * visual(Scatter) |> draw()
+data(df_leaves_opened) * mapping(:timestep, :leaves_undetermined, color=:Site => nonnumeric) * visual(Scatter) |> draw()
+
+#! Control that all leaves that are undetermined are also of rank <1
+df_leaves_undetermined = filter(row -> row.state == "undetermined", df_leaf)
+@test all(df_leaves_undetermined.rank .< 1)
+df_leaves_pruned = filter(row -> row.state == "Pruned", df_leaf)
+@test all(df_leaves_pruned.rank .> params_default[:rank_leaf_pruning] .|| df_leaves_pruned.TT_since_init .> params_default[:female][:TT_harvest])
+
+
+minimum(df_leaf_TOWE_ts_end_pruned.rank)
+
+df_leaf_TOWE = filter(row -> row.Site == "SMSE", df_leaf)
+df_leaf_TOWE_ts_end = filter(row -> row.timestep == 4160, df_leaf_TOWE)
+df_leaf_TOWE_ts_end_opened = filter(x -> x.state == "Opened", df_leaf_TOWE_ts_end)
+df_leaf_TOWE_ts_end_undetermined = filter(x -> x.state == "undetermined", df_leaf_TOWE_ts_end)
+df_leaf_TOWE_ts_end_pruned = filter(x -> x.state == "Pruned", df_leaf_TOWE_ts_end)
+
+
+
 unique(df_leaf.node) |> print
 df_leaf_one = filter(row -> row[:node] == 80, df_leaf)
 data(df_leaf_one) * mapping(:timestep, :leaf_area, color=:Site => nonnumeric) * visual(Scatter) |> draw()
