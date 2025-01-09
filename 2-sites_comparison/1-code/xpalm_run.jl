@@ -83,10 +83,13 @@ draw(p_lai)
 data(dfs_scene) * mapping(:timestep, :aPPFD => "Absorbed PPFD (MJ m⁻²[soil] d⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
+# combine(groupby(dfs_plant, :Site), :TEff => sum => :TEff)
+
 dfs_plant_month = combine(
     groupby(dfs_plant, [:Site, :months_after_planting]),
+    :date => (x -> Date(yearmonth(x[1])...)) => :date,
     :TEff => sum => :TEff,
-    :timestep => (x -> x[end] - x[1] + 1) => :timestep,
+    :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested_monthly,
     :biomass_bunch_harvested_cum => last => :biomass_bunch_harvested_cum,
     :n_bunches_harvested => sum => :n_bunches_harvested_monthly,
@@ -96,6 +99,28 @@ dfs_plant_month = combine(
 )
 
 data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_emmitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
+
+# Observations of emitted leaves:
+nb_leaves_emitted_obs = CSV.read("0-data/validation/phyllochron_observations.csv", DataFrame)
+sort!(nb_leaves_emitted_obs, [:site, :genotype, :months_after_planting])
+transform!(groupby(nb_leaves_emitted_obs, [:site, :genotype]), :nb_leaves_emitted => cumsum => :nb_leaves_emitted_cum)
+
+nb_leaves_emitted_obs = leftjoin(nb_leaves_emitted_obs, select(dfs_plant_month, :Site, :date, :TEff, :phytomer_emmitted => :nb_leaves_emitted_sim), on=[:site => :Site, :date])
+dropmissing!(nb_leaves_emitted_obs)
+transform!(groupby(nb_leaves_emitted_obs, [:site, :genotype]), :nb_leaves_emitted_sim => cumsum => :nb_leaves_emitted_cum_sim, [:nb_leaves_emitted, :TEff] => ((x, y) -> x ./ y) => :nb_leaves_emitted_per_TEff)
+
+data(nb_leaves_emitted_obs) * mapping(:months_after_planting, :nb_leaves_emitted, color=:genotype, layout=:site) * visual(Lines) |> draw()
+data(nb_leaves_emitted_obs) * mapping(:months_after_planting, :nb_leaves_emitted_cum, color=:genotype, layout=:site) * visual(Lines) |> draw()
+data(nb_leaves_emitted_obs) * mapping(:months_after_planting, :nb_leaves_emitted_per_TEff, color=:genotype, layout=:site) * visual(Lines) |> draw()
+# data(nb_leaves_emitted_obs) * mapping(:months_after_planting, :nb_leaves_emitted_cum_sim, color=:genotype, layout=:site) * visual(Lines) |> draw()
+data(nb_leaves_emitted_obs) * mapping(:months_after_planting, (:nb_leaves_emitted, :TEff) => ((x, y) -> x / y) => "nb_leaves_emitted_per_TEff", color=:site) * visual(Scatter) |> draw()
+
+#! Computing the phyllochron (production speed) for each site at 50 and 100MAP:
+phylochron_MAP50 = combine(groupby(filter(row -> row.months_after_planting < 50, nb_leaves_emitted_obs), :site), :nb_leaves_emitted_per_TEff => mean => :nb_leaves_emitted_per_TEff)
+phylochron_MAP100 = combine(groupby(filter(row -> row.months_after_planting > 100, nb_leaves_emitted_obs), :site), :nb_leaves_emitted_per_TEff => mean => :nb_leaves_emitted_per_TEff)
+# Computing the average over all sites, that we use in the parameter file.
+mean(phylochron_MAP50.nb_leaves_emitted_per_TEff), mean(phylochron_MAP100.nb_leaves_emitted_per_TEff)
+#! note: the phyllochron seems to be affected by stress, as it is lower in SMSE and even lower in TOWE compared to PR.
 
 #! n leaves should be around 150 at 100MAP, 200-250 at 150MAP
 data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_count, color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -142,13 +167,12 @@ data(filter(row -> row.timestep > 100, dfs_plant)) * mapping(:timestep, :reserve
 CC_Fruit = 0.4857     # Fruit carbon content (gC g-1 dry mass)
 # Monthly harvest in kg dry mass per plant:
 data(dfs_plant) * mapping(:timestep, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit) => "Biomass Bunch Harvested (kg dry mass)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
-#! should be around 10kg for TOWE, 15-20kg for PR and 20kg for SMSE at 150MAP
 
+#! should be around 10kg for TOWE, 15-20kg for PR and 20kg for SMSE at 150MAP
 data(dfs_plant) * mapping(:timestep, :biomass_fruit_harvested => (x -> x * 1e-3 / CC_Fruit) => "Biomass Fruit Harvested (kg dry mass)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
-CC_Fruit = 0.4857     # Fruit carbon content (gC g-1 dry mass)
 # Monthly harvest in kg fresh mass per plant (assuming 30% water content):
-data(dfs_plant) * mapping(:timestep, :biomass_bunch_harvested_cum => (x -> (x * 1e-3 / CC_Fruit) * 1.3) => "Cumulated FFB (kg tree⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(dfs_plant) * mapping(:months_after_planting, :biomass_bunch_harvested_cum => (x -> (x * 1e-3 / CC_Fruit) * 1.3) => "Cumulated FFB (kg tree⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 #! should be around 500 for TOWE, 1000 for PR and 1500 for SMSE at 150MAP
 
 data(dfs_plant_month) * mapping(:months_after_planting, :biomass_bunch_harvested_monthly, color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -184,7 +208,7 @@ data(df_female_1) * mapping(:timestep, :biomass_stalk, color=:Site => nonnumeric
 data(df_female_1) * mapping(:timestep, :carbon_demand_non_oil, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :carbon_demand_oil, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :carbon_demand_stalk, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-data(df_female_1) * mapping(:timestep, :fruits_number, color=:Site => nonnumeric) * visual(Scatter) |> draw()
+data(df_female_1) * mapping(:timestep, :fruits_number => (x -> x > 0 ? x : 0) => "Number of fruits", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :carbon_allocation, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
 
@@ -201,30 +225,8 @@ data(df_female_2) * mapping(:timestep, :state, color=:Site => nonnumeric) * visu
 data(df_female_2) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_2) * mapping(:timestep, :biomass_fruits, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
-scatter(df_female_1.timestep, df_female_1.carbon_demand, color=:green, markersize=3)
-scatter(df_female_1.timestep, df_female_1.carbon_allocation, color=:green, markersize=3)
 
-scatter(df_female_1.timestep, df_female_1.carbon_allocation ./ df_female_1.carbon_demand, color=:green, markersize=3)
-df_female_1.Rm[1] = 0.0
-scatter(df_female_1.timestep, df_female_1.Rm, color=:green, markersize=3)
-
-df_female_other = filter(row -> row[:node] == 859, df_female)
-scatter(df_female_other.timestep, df_female_other.Rm, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.carbon_demand, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.carbon_allocation, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.biomass, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.biomass_fruits, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.biomass_stalk, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.carbon_demand_non_oil, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.carbon_demand_oil, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.carbon_demand_stalk, color=:green, markersize=3)
-scatter(df_female_other.timestep, df_female_other.fruits_number, color=:green, markersize=3)
-data(df_female_other) * mapping(:timestep, :state, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-sum(df_female_other.carbon_demand)
-scatter(df_female_other.TT_since_init, df_female_other.fruits_number, color=:green, markersize=3)
-1
-
-
+# Leaves
 df_leaf = filter(row -> row[:organ] == "Leaf", dfs_all)
 #! control that the number of leaves at rank > 1 increases each step
 df_leaves_rank_sup_1 = combine(groupby(df_leaf, [:Site, :timestep]), :rank => (r -> length(filter(x -> x > 0, r))) => :rank)
@@ -244,7 +246,7 @@ df_leaves_opened = combine(
     :state => (s -> length(s)) => :n_leaves,
 )
 
-data(df_leaves_opened) * mapping(:timestep, :leaves_emitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_leaves_opened) * mapping(:months_after_planting, :leaves_emitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 p_phytomers = data(dfs_plant) * mapping(:timestep, :phytomer_count, color=:Site => nonnumeric) * visual(Lines)
 p_leaves_all = data(df_leaves_opened) * mapping(:timestep, :leaves_all, color=:Site => nonnumeric) * visual(Lines)
@@ -264,11 +266,11 @@ leaves_emitted_per_site = combine(groupby(df_leaves_opened, :Site), [:leaves_emi
 
 #! Number of leaves opened + pruned should be around 150 at 100MAP, 200-250 at 150MAP:
 data(df_leaves_opened) * mapping(:months_after_planting, :leaves_emitted, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-leaves_emmited_at_100MAP = filter(row -> row.months_after_planting == 100, df_leaves_opened).leaves_emitted |> mean
-leaves_emmited_at_0MAP = filter(row -> row.months_after_planting == 0, df_leaves_opened).leaves_emitted |> mean
-# Leaves emmitted is a cumulative value, so we need to substract the value at 0MAP to get the number of leaves emmited between 0 and 100MAP
-leaves_emmited_at_100MAP -= leaves_emmited_at_0MAP
-@test leaves_emmited_at_100MAP > 140 && leaves_emmited_at_100MAP < 160
+leaves_emitted_at_100MAP = filter(row -> row.months_after_planting == 100, df_leaves_opened).leaves_emitted |> mean
+leaves_emitted_at_0MAP = filter(row -> row.months_after_planting == 0, df_leaves_opened).leaves_emitted |> mean
+# Leaves emmitted is a cumulative value, so we need to substract the value at 0MAP to get the number of leaves emitted between 0 and 100MAP
+leaves_emitted_at_100MAP -= leaves_emitted_at_0MAP
+@test leaves_emitted_at_100MAP > 140 && leaves_emitted_at_100MAP < 160
 
 data(df_leaves_opened) * mapping(:timestep, :leaves_opened, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_leaves_opened) * mapping(:timestep, :leaves_pruned, color=:Site => nonnumeric) * visual(Scatter) |> draw()
