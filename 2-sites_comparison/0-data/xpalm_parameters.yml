@@ -27,9 +27,12 @@ soil:
   transpiration_threshold: 0.5
 phyllochron:
   age_palm_maturity: 2920
-  production_speed_initial: 0.0050
-  production_speed_mature: 0.0040
+  # production_speed_initial: 0.0050
+  # production_speed_mature: 0.0040
   threshold_ftsw_stress: 0.3
+  # production_speed_initial: 0.008
+  production_speed_initial: 0.009
+  production_speed_mature: 0.0066
   # production_speed_initial: 0.0111
   # production_speed_mature: 0.0074
 lma_max: 200.0
@@ -41,7 +44,7 @@ female:
   fraction_period_oleosynthesis: 0.8
   duration_fruit_setting: 405.0
   fraction_period_stalk: 0.2
-  TT_harvest: 12150.0
+  TT_harvest: 12150.0 # 90 phytomers until harvest (60 growing + 30 opened) x 9°C days-1 in average per day x 15 days
   oil_content: 0.25
   duration_dev_spikelets: 675.0
   potential_fruit_number_at_maturity: 2000
@@ -82,7 +85,7 @@ potential_area:
   leaf_area_first_leaf: 0.02
   leaf_area_mature_leaf: 12.0
   age_first_mature_leaf: 2920
-  inflexion_index: 560.0
+  inflexion_index: 500.0
   slope: 100.0
 k: 0.5
 SRL: 0.4
@@ -98,7 +101,7 @@ potential_dimensions:
   min_radius: 0.002
   slope_radius: 150.0
 RUE: 4.8
-threshold_ftsw: 0.6
+threshold_ftsw: 0.3
 leaflets_biomass_contribution: 0.35
 lma_min: 80.0
 inflo:
@@ -108,7 +111,7 @@ inflo:
   sex_ratio_ref: 0.6
   random_seed: 1
   abortion_rate_ref: 0.2
-  TT_flowering: 6300.0
+  TT_flowering: 10530.0 # TT_Harvest - (180 days * 9°C days-1 in average), see Van Kraalingen et al. 1989
   duration_abortion: 540.0
 male:
   fraction_biomass_first_male: 0.3
