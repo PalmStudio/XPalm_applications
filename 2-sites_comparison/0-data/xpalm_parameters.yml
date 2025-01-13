@@ -31,8 +31,8 @@ phyllochron:
   # production_speed_mature: 0.0040
   threshold_ftsw_stress: 0.3
   # production_speed_initial: 0.008
-  production_speed_initial: 0.009
-  production_speed_mature: 0.0066
+  production_speed_initial: 0.0111
+  production_speed_mature: 0.0074
   # production_speed_initial: 0.0111
   # production_speed_mature: 0.0074
 lma_max: 200.0
@@ -85,7 +85,7 @@ potential_area:
   leaf_area_first_leaf: 0.02
   leaf_area_mature_leaf: 12.0
   age_first_mature_leaf: 2920
-  inflexion_index: 500.0
+  inflexion_index: 337.5 # with around 60 leaves with rank < 1, each taking 15 days to emerge at mature stage, and 9°C days-1 per day average, it takes 8100 days to develop. At mature stage a leaf is around 12 m2, so it should be 8100 / 12 / 2 (inflexion is at half duration)
   slope: 100.0
 k: 0.5
 SRL: 0.4
