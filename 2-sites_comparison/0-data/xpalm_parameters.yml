@@ -37,7 +37,8 @@ phyllochron:
   # production_speed_mature: 0.0074
 lma_max: 200.0
 female:
-  age_mature_female: 2920.0
+  days_increase_number_fruits: 2379.0 # in days
+  days_maximum_number_fruits: 6500.0 # in days
   stalk_max_biomass: 2100.0
   fraction_first_female: 0.3
   potential_fruit_weight_at_maturity: 6.5

@@ -47,7 +47,10 @@ begin
             :final_potential_height, :final_potential_radius, :initiation_age, :TT_since_init, :final_potential_height, :final_potential_radius
         ),
         "Male" => (:Rm, :carbon_demand, :carbon_allocation, :biomass, :final_potential_biomass, :TEff),
-        "Female" => (:Rm, :carbon_demand, :carbon_allocation, :biomass, :TEff, :fruits_number, :state, :carbon_demand_non_oil, :carbon_demand_oil, :carbon_demand_stalk, :biomass_fruits, :biomass_stalk, :TT_since_init),
+        "Female" => (
+            :Rm, :carbon_demand, :carbon_allocation, :biomass, :TEff, :fruits_number, :state, :carbon_demand_non_oil, :carbon_demand_oil, :carbon_demand_stalk, :biomass_fruits,
+            :biomass_stalk, :TT_since_init, :biomass_bunch_harvested
+        ),
         "Plant" => (
             :TEff, :plant_age, :ftsw, :biomass_bunch_harvested, :Rm, :aPPFD, :carbon_allocation, :biomass_bunch_harvested, :biomass_fruit_harvested,
             :carbon_assimilation, :reserve, :carbon_demand, :carbon_offer_after_allocation, :carbon_offer_after_rm, :leaf_area,
@@ -96,6 +99,7 @@ dfs_plant_month = combine(
     :TEff => sum => :TEff,
     :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested_monthly,
+    :biomass_bunch_harvested => mean => :average_biomass_bunch_harvested_monthly,
     :biomass_bunch_harvested_cum => last => :biomass_bunch_harvested_cum,
     :n_bunches_harvested => sum => :n_bunches_harvested_monthly,
     :n_bunches_harvested_cum => last => :n_bunches_harvested_cum,
@@ -183,7 +187,7 @@ data(filter(row -> row.timestep > 100, dfs_plant)) * mapping(:timestep, :Rm, col
 data(filter(row -> row.timestep > 100, dfs_plant)) * mapping(:timestep, :reserve => (x -> x * 1e-3), color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 CC_Fruit = 0.4857     # Fruit carbon content (gC g-1 dry mass)
-water_content_mesocarp = 0.3  # Water content of the mesocarp
+water_content_mesocarp = 0.25  # Water content of the mesocarp
 dry_to_fresh_ratio = 1 / (1 - water_content_mesocarp)  # Based on the mesocarp water content of 0.3
 
 # Monthly harvest in kg dry mass per plant:
@@ -198,6 +202,7 @@ data(dfs_plant) * mapping(:months_after_planting, :biomass_bunch_harvested_cum =
 
 data(dfs_plant_month) * mapping(:months_after_planting, :biomass_bunch_harvested_monthly, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_plant_month) * mapping(:months_after_planting, :n_bunches_harvested_monthly, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(dfs_plant_month) * mapping(:months_after_planting, :average_biomass_bunch_harvested_monthly => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average biomass bunch (kg tree⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 
 #! Should be around 80-150 at 150 months after planting, 50-80 for TOWE
@@ -221,14 +226,42 @@ data(dfs_soil) * mapping(:timestep, :qty_H2O_C2, color=:Site => nonnumeric) * vi
 
 data(filter(row -> row[:organ] == "Female" && row.Site == "SMSE", dfs_all)) * mapping(:timestep, :Rm => (x -> isinf(x) ? 0.0 : x) => "Rm", marker=:Site => nonnumeric, color=:node => nonnumeric) * visual(Scatter) |> draw()
 
+
+#! Females (bunches)
 df_female = filter(row -> row[:organ] == "Female" && row.Site == "PR", dfs_all)
 select!(df_female, findall(x -> any(!ismissing(i) for i in x), eachcol(df_female)))
 
 # df_female_1 = filter(row -> row[:node] == 191, df_female)
 
 
+df_female_month = combine(
+    groupby(df_female, [:Site, :months_after_planting]),
+    :date => (x -> Date(yearmonth(x[1])...)) => :date,
+    :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
+    :state => (x -> sum(x .== "Harvested")) => :n_bunches_harvested,
+    :biomass_bunch_harvested => sum => :biomass_bunch_harvested,
+    :biomass_bunch_harvested => (x -> mean(filter(y -> y > 0, x))) => :biomass_bunch_harvested_average,
+)
+
+data(df_female_month) * mapping(:months_after_planting, :biomass_bunch_harvested_average, color=:Site => nonnumeric) * visual(Lines) |> draw()
+
+data(df_female_month) * mapping(:months_after_planting, :biomass_bunch_harvested_average => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average bunch biomass (kg)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
+
+data(df_female) * mapping(:timestep, :fruits_number => (x -> x > 0 ? x : 0) => "Number of fruits", color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
 
 
+data(filter(x -> x.Site == "PR", df_female)) * mapping(:months_after_planting, :fruits_number => (x -> x > 0 ? x : 0) => "Number of fruits", color=:node => nonnumeric) * visual(Scatter) |> draw()
+
+
+# coeff = XPalm.age_relative_value.(1:length(meteos[1]), params_default[:female][:days_increase_number_fruits], params_default[:female][:days_maximum_number_fruits], params_default[:female][:fraction_first_female], 1.0)
+#! Calibration of the number of fruits:
+days_increase_number_fruits = 2379.0
+days_maximum_number_fruits = 6500.0
+potential_fruit_number_at_maturity = 2000
+fraction_first_female = 0.3
+coeff = XPalm.age_relative_value.(1:length(meteos[1]), days_increase_number_fruits, days_maximum_number_fruits, fraction_first_female, 1.0)
+data(DataFrame(months_after_planting=meteos[1].months_after_planting, nfruits=coeff .* potential_fruit_number_at_maturity)) * mapping(:months_after_planting, :nfruits) * visual(Lines) |> draw()
+#! it should be around 600 at 50 MAP, then increasing to 1000 at 100MAP (and 2000 at 150MAP) (see PR site in CIGE data)
 
 unique(df_female.node) |> print
 df_female_1 = filter(row -> row[:node] == 321, df_female)
