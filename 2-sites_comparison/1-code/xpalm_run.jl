@@ -482,15 +482,20 @@ lines(df_plant_month.yearmonth, df_plant_month.biomass_bunch_harvested_monthly .
 lines(df_plant_month.months_after_planting, df_plant_month.biomass_bunch_harvested_monthly ./ 1000 ./ CC_Fruit, color=:black)
 lines(df_scene_month.months_after_planting, df_scene_month.lai, color=:black)
 
-df_internode = filter(row -> row[:organ] == "Internode", df)
-df_internode_7 = filter(row -> row[:node] == 7, df_internode)
-df_internode_one = filter(row -> row[:node] == 852, df_internode)
+df_internode = filter(row -> row[:organ] == "Internode", dfs_all)
+df_internode_7 = filter(row -> row[:node] == 7 && row.Site == "PR", df_internode)
+df_internode_one = filter(row -> row[:node] == 853 && row.Site == "PR", df_internode)
 
-scatter(df_internode_7.carbon_demand)
-scatter(df_internode_7.Rm)
-scatter(df_internode_7.biomass)
-sum(df_internode_7.carbon_demand)
+data(df_internode_7) * mapping(:timestep, :potential_height, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_internode_7) * mapping(:timestep, :carbon_demand, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_internode_7) * mapping(:timestep, :Rm, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_internode_7) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_internode_7) * mapping(:timestep, :initiation_age, color=:Site => nonnumeric) * visual(Lines) |> draw()
+
+data(filter(x -> x.Site == "SMSE", df_internode)) * mapping(:timestep, :initiation_age, color=:node => nonnumeric) * visual(Lines) |> draw()
+
 df_internode_7.TT_since_init[1]
+
 df_internode_7.initiation_age[1]
 df_internode_7.reserve[1]
 df_internode_7.biomass[1]
