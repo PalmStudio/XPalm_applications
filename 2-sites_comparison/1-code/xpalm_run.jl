@@ -212,8 +212,10 @@ data(dfs_plant_month) * mapping(:months_after_planting, :n_bunches_harvested_cum
 p_ffb = data(dfs_plant_month) * mapping(:months_after_planting, :biomass_bunch_harvested_cum => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "Cumulated FFB (kg tree⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 # save("2-output/FFB_cumulated.png", p_ffb)
 
+#! FFB in kg plant-1 year-1 should be around 100-200 kg according to Van Kraalingen et al. 1989 (may be way higher now):
+p_ffb_year_plant = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 #! FFB (yield, t ha-1):
-p_ffb_year = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default[:scene_area] * 10000) => "FFB (t ha⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
+p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default[:scene_area] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 
 dfs_soil = filter(row -> row[:organ] == "Soil", dfs_all)
