@@ -264,7 +264,6 @@ function xpalm_mapping(p)
             ),
             MaleCarbonDemandModel(
                 p.parameters[:carbon_demand][:male][:respiration_cost],
-                p.parameters[:inflo][:TT_flowering],
                 p.parameters[:male][:duration_flowering_male],
             ),
             MaleBiomass(
