@@ -16,3 +16,7 @@ The cumulative emmitted leaves are only slightly different between sites, air te
 A second supporting information is that the variation in the average number of emmited leaves per months is quite different between sites (*emmited leaves are leaves at rank 1 in the data I think*), with much lower variability in PR, more variability in SMSE and even more in TOWE. This may support the hypothesis that the phyllochron emmits leaves quite continuously, but that leaves remain at the spear stage for a longer period when the FTSW is low (zero or low number of "emmited leaves"), but opening at the same time when rain coms back (high number of "emmited leaves").
 
 Following this hypothesis, we should not apply the FTSW stress to the phyllochron, but only to the decision of opening the leaf.
+
+## To do
+
+- [ ] calibration of 'final_potential_biomass' check on ECOPALM data the maximum number of furit and maximal individual fruit
