@@ -88,7 +88,6 @@ draw(p_lai)
 
 data(dfs_scene) * mapping(:timestep, :aPPFD => "Absorbed PPFD (MJ m⁻²[soil] d⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
-
 #! Plant scale
 dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
 select!(dfs_plant, findall(x -> any(!ismissing(i) for i in x), eachcol(dfs_plant)))
@@ -285,19 +284,21 @@ df_male_month = combine(
     :date => (x -> Date(yearmonth(x[1])...)) => :date,
     :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
     :state => (x -> sum(x .== "Harvested")) => :n_males_harvested,
-    :biomass => sum => :biomass,
+    :state => (x -> sum(x .== "Scenescent")) => :n_males_Senescent,
+    [:biomass, :state] => ((x, y) -> mean(x[findall(z -> z == "Scenescent", y)])) => :biomass_avg,
 )
 
+df_male_month.biomass_avg[isnan.(df_male_month.biomass_avg)] .= 0.0
 
 data(df_male) * mapping(:months_after_planting, :carbon_demand, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
 data(df_male) * mapping(:months_after_planting, :carbon_allocation, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
-data(df_male) * mapping(:months_after_planting, :biomass, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
+data(df_male) * mapping(:months_after_planting, :biomass_avg, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
 
 #! Average male inflorescence biomass:
-data(df_male_month) * mapping(:months_after_planting, :biomass => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average male inflorescence biomass (kg)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
+data(df_male_month) * mapping(:months_after_planting, :biomass_avg => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average male inflorescence biomass (kg)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
-
-df_male_one = filter(row -> row[:node] == 922 && row.Site == "PR", df_male)
+print(unique(df_male.node))
+df_male_one = filter(row -> row[:node] == 1014 && row.Site == "PR", df_male)
 data(df_male_one) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_male_one) * mapping(:timestep, :state, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_male_one) * mapping(:timestep, :carbon_demand, color=:Site => nonnumeric) * visual(Scatter) |> draw()
