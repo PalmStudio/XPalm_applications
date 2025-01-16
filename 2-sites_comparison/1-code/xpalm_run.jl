@@ -295,7 +295,8 @@ data(df_male) * mapping(:months_after_planting, :carbon_allocation, color=:Site 
 data(df_male) * mapping(:months_after_planting, :biomass_avg, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
 
 #! Average male inflorescence biomass:
-data(df_male_month) * mapping(:months_after_planting, :biomass_avg => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average male inflorescence biomass (kg)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
+data(df_male_month) * mapping(:months_after_planting, :biomass_avg => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average male inflorescence biomass (kg fresh mass)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
+data(df_male_month) * mapping(:months_after_planting, :biomass_avg => (x -> x * 1e-3) => "Average male inflorescence biomass (kgC)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
 print(unique(df_male.node))
 df_male_one = filter(row -> row[:node] == 1014 && row.Site == "PR", df_male)
