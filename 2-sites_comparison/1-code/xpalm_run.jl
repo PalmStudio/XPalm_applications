@@ -99,7 +99,6 @@ dfs_plant_month = combine(
     :TEff => sum => :TEff,
     :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested_monthly,
-    :biomass_bunch_harvested => mean => :average_biomass_bunch_harvested_monthly,
     :biomass_bunch_harvested_cum => last => :biomass_bunch_harvested_cum,
     :n_bunches_harvested => sum => :n_bunches_harvested_monthly,
     :n_bunches_harvested_cum => last => :n_bunches_harvested_cum,
@@ -202,8 +201,6 @@ data(dfs_plant) * mapping(:months_after_planting, :biomass_bunch_harvested_cum =
 
 data(dfs_plant_month) * mapping(:months_after_planting, :biomass_bunch_harvested_monthly, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_plant_month) * mapping(:months_after_planting, :n_bunches_harvested_monthly, color=:Site => nonnumeric) * visual(Lines) |> draw()
-data(dfs_plant_month) * mapping(:months_after_planting, :average_biomass_bunch_harvested_monthly => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average biomass bunch (kg tree⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
-
 
 #! Should be around 80-150 at 150 months after planting, 50-80 for TOWE
 data(dfs_plant_month) * mapping(:months_after_planting, :n_bunches_harvested_cum, color=:Site => nonnumeric) * visual(Lines) |> draw()
