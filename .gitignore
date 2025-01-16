@@ -27,6 +27,5 @@ Manifest.toml
 
 2-sites_comparison/0-data/ATP_Ecopalm
 2-sites_comparison/0-data/CIGE_shiny_app
-2-sites_comparison/0-data/validation
 2-sites_comparison/0-data/Meteo_predictions_all_sites_cleaned.csv
 *.pdf
