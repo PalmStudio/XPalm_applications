@@ -53,7 +53,7 @@ begin
             :biomass_stalk, :TT_since_init, :biomass_bunch_harvested
         ),
         "Plant" => (
-            :TEff, :plant_age, :ftsw, :biomass_bunch_harvested, :Rm, :aPPFD, :carbon_allocation, :biomass_bunch_harvested, :biomass_fruit_harvested,
+            :TEff, :plant_age, :ftsw, :Rm, :aPPFD, :carbon_allocation, :biomass_bunch_harvested, :biomass_fruit_harvested,
             :carbon_assimilation, :reserve, :carbon_demand, :carbon_offer_after_allocation, :carbon_offer_after_rm, :leaf_area,
             :n_bunches_harvested, :biomass_bunch_harvested_cum, :n_bunches_harvested_cum, :TEff, :phytomer_count, :production_speed,
         ),
