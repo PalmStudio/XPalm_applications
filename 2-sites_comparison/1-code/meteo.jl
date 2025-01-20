@@ -65,4 +65,13 @@ select!(
     :Rg
 )
 
+# Make a plot with all variables to check the data:
+meteo_long = stack(meteo_cleaned, Not(:Site, :date, :timestep, :duration, :months_after_planting), variable_name=:variable, value_name=:value)
+# data(meteo_long) * mapping(:months_after_planting => "Months after planting", :value => "Value", layout=:variable) * visual(Lines) |> draw(facet=(; linkxaxes=:minimal, linkyaxes=:none))
+data(meteo_long) * mapping(:date => "Date", :value => "Value", layout=:variable, color=:Site) * visual(Lines) |>
+draw(facet=(; linkyaxes=:none), figure=(; size=(800, 600)), axis=(xticklabelrotation=45,))
+
+
 CSV.write("0-data/Meteo_predictions_all_sites_cleaned.csv", meteo_cleaned)
+
+# CSV.write("0-data/Meteo_Nigeria_PR.csv", select(filter(x -> x.Site == "PR", meteo_cleaned), Not(:Site, :timestep, :duration, :months_after_planting)))
