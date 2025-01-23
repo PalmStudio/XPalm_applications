@@ -37,7 +37,7 @@ out_vars = Dict{String,Any}(
         :Rm, :carbon_demand, :carbon_allocation, :biomass, :leaf_area, :reserve, :rank, :state, :pruning_decision
     ),
     "Female" => (
-        :carbon_demand, :carbon_allocation, :biomass, :fruits_number, :state, :biomass_fruits,
+        :carbon_demand, :carbon_allocation, :biomass, :fruits_number, :state, :biomass_fruit_harvested,
         :biomass_stalk, :biomass_bunch_harvested
     ),
     "Plant" => (
@@ -121,6 +121,7 @@ dfs_plant_year = combine(
     groupby(transform(dfs_plant, :date => ByRow(year) => :year), [:year, :rank_leaves_left, :window_duration]),
     :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested,
+    :biomass_fruit_harvested => sum => :biomass_fruit_harvested,
     :biomass_bunch_harvested_cum => last => :biomass_bunch_harvested_cum
 )
 
@@ -155,6 +156,8 @@ save("outputs/ffb_year_cum_plant.png", p_ffb_cum_plant, px_per_unit=3)
 #! FFB (yield, t ha-1):
 p_ffb_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
 save("outputs/ffb_year_plot.png", p_ffb_year_plot, px_per_unit=3, resolution=(800, 600))
+p_fruits_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_fruit_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => "Fruit yield (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
+save("outputs/p_fruit_yields_year_plot.png", p_fruits_year_plot, px_per_unit=3, resolution=(800, 600))
 
 p_ffb_cum_year_plot = data(dfs_plant_month) * mapping(:months_after_planting => "Months after planting", :biomass_bunch_harvested_cum => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => "Cumulated FFB (t ha⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
 save("outputs/ffb_year_cum_plot.png", p_ffb_cum_year_plot, px_per_unit=3)
