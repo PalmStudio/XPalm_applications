@@ -1,6 +1,6 @@
-using XPalm, CSV, DataFrames, YAML
+using XPalmModel, CSV, DataFrames, YAML
 using CairoMakie, AlgebraOfGraphics
-using XPalm.PlantMeteo
+using XPalmModel.PlantMeteo
 using Dates
 using Statistics
 
@@ -28,10 +28,10 @@ out_vars = Dict{String,Any}(
     # "Soil" => (:TEff, :ftsw, :root_depth),
 )
 
-palm = XPalm.Palm(initiation_age=0, parameters=XPalm.default_parameters())
-@time sim = XPalm.PlantSimEngine.run!(palm.mtg, XPalm.model_mapping(palm), meteo, outputs=out_vars, executor=XPalm.PlantSimEngine.SequentialEx(), check=false);
+palm = XPalmModel.Palm(initiation_age=0, parameters=XPalmModel.default_parameters())
+@time sim = XPalmModel.PlantSimEngine.run!(palm.mtg, XPalmModel.model_mapping(palm), meteo, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false);
 # 6.5s
-@time df = XPalm.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
+@time df = XPalmModel.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
 
 df_phytomer = filter(row -> row[:organ] == "Phytomer", df)
 scatter(df_phytomer.timestep, df_phytomer.rank, color=:green, markersize=3)
@@ -169,6 +169,28 @@ scatter(df_female_other.timestep, df_female_other.carbon_allocation, color=:gree
 scatter(df_female_other.timestep, df_female_other.biomass, color=:green, markersize=3)
 sum(df_female_other.carbon_demand)
 
+
 # Using a notebook instead:
-using Pluto, XPalm
-XPalm.notebook("xpalm_notebook.jl")
+using Pluto, XPalmModel
+XPalmModel.notebook("xpalm_notebook.jl")
+
+
+#! To remove:
+# Read the parameters from a YAML file (provided in the example folder of the package):
+using YAML
+parameters = YAML.load_file(joinpath(dirname(dirname(pathof(XPalmModel))), "examples/xpalm_parameters.yml"); dicttype=Dict{Symbol,Any})
+
+# Create palm with custom parameters
+p = XPalmModel.Palm(parameters=parameters)
+
+# Run simulation with multiple outputs
+results = xpalm(
+    meteo,
+    DataFrame,
+    vars=Dict(
+        "Scene" => (:lai,),
+        "Plant" => (:leaf_area, :biomass_bunch_harvested),
+        "Soil" => (:ftsw,)
+    ),
+    palm=p,
+)

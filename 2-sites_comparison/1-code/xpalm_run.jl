@@ -1,7 +1,7 @@
-using XPalm, CSV, DataFrames, YAML
+using XPalmModel, CSV, DataFrames, YAML
 using CairoMakie, AlgebraOfGraphics
 import PlantSimEngine: MultiScaleModel, PreviousTimeStep
-using XPalm.Models
+using XPalmModel.Models
 using PlantMeteo
 using Dates
 using Statistics
@@ -64,11 +64,11 @@ begin
     simulations = DataFrame[]
     for m in meteos
         site = m[1].Site
-        palm = XPalm.Palm(initiation_age=0, parameters=params[site])
-        # sim = XPalm.PlantSimEngine.run!(palm.mtg, XPalm.model_mapping(palm), m, outputs=out_vars, executor=XPalm.PlantSimEngine.SequentialEx(), check=false)
-        sim = XPalm.PlantSimEngine.run!(palm.mtg, xpalm_mapping(palm), m, outputs=out_vars, executor=XPalm.PlantSimEngine.SequentialEx(), check=false)
+        palm = XPalmModel.Palm(initiation_age=0, parameters=params[site])
+        # sim = XPalmModel.PlantSimEngine.run!(palm.mtg, XPalmModel.model_mapping(palm), m, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false)
+        sim = XPalmModel.PlantSimEngine.run!(palm.mtg, xpalm_mapping(palm), m, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false)
 
-        df = XPalm.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
+        df = XPalmModel.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
         df[!, "Site"] .= site
         push!(simulations, df)
     end
@@ -250,7 +250,7 @@ days_increase_number_fruits = 2379.0
 days_maximum_number_fruits = 6500.0
 potential_fruit_number_at_maturity = 2000
 fraction_first_female = 0.3
-coeff = XPalm.age_relative_value.(1:length(meteos[1]), days_increase_number_fruits, days_maximum_number_fruits, fraction_first_female, 1.0)
+coeff = XPalmModel.age_relative_value.(1:length(meteos[1]), days_increase_number_fruits, days_maximum_number_fruits, fraction_first_female, 1.0)
 data(DataFrame(months_after_planting=meteos[1].months_after_planting, nfruits=coeff .* potential_fruit_number_at_maturity)) * mapping(:months_after_planting, :nfruits) * visual(Lines) |> draw()
 #! it should be around 600 at 50 MAP, then increasing to 1000 at 100MAP (and 2000 at 150MAP) (see PR site in CIGE data)
 
@@ -496,5 +496,5 @@ reserves_trunk = combine(groupby(df_internode, :timestep), :reserve => sum) ./ 1
 lines(reserves_trunk.reserve_sum)
 
 #! Using the notebook instead:
-using Pluto, XPalm
-XPalm.notebook("xpalm_notebook.jl")
+using Pluto, XPalmModel
+XPalmModel.notebook("xpalm_notebook.jl")

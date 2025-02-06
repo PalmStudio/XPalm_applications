@@ -1,4 +1,4 @@
-using XPalm, XPalm.Models, PlantSimEngine
+using XPalmModel, XPalmModel.Models, PlantSimEngine
 using MultiScaleTreeGraph, PlantMeteo
 using CSV, DataFrames, YAML
 using Dates
@@ -55,7 +55,7 @@ for i in combinations
         :duration => i.window[2]
     )
 
-    palm = XPalm.Palm(initiation_age=0, parameters=parameters)
+    palm = XPalmModel.Palm(initiation_age=0, parameters=parameters)
     models = model_mapping_theft(palm)
     out = PlantSimEngine.run!(palm.mtg, models, meteo_w, outputs=out_vars, executor=PlantSimEngine.SequentialEx(), check=false)
     df = PlantSimEngine.outputs(out, DataFrame, no_value=missing)

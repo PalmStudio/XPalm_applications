@@ -1,5 +1,5 @@
-using XPalm
-using XPalm.PlantMeteo
+using XPalmModel
+using XPalmModel.PlantMeteo
 using PlantSimEngine
 using DataFrames, CSV, YAML
 using CairoMakie, AlgebraOfGraphics
@@ -34,9 +34,9 @@ begin
     for m in meteos
         # m = meteos[1]
         site = m[1].Site
-        palm = XPalm.Palm(initiation_age=0, parameters=params[site])
-        sim = XPalm.PlantSimEngine.run!(palm.mtg, xpalm_mapping(palm), m, outputs=out_vars, executor=XPalm.PlantSimEngine.SequentialEx(), check=false)
-        df = XPalm.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
+        palm = XPalmModel.Palm(initiation_age=0, parameters=params[site])
+        sim = XPalmModel.PlantSimEngine.run!(palm.mtg, xpalm_mapping(palm), m, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false)
+        df = XPalmModel.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
         df[!, "Site"] .= site
         push!(simulations, df)
     end
@@ -50,7 +50,7 @@ end
 dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
 
 function phytomer_emergence(plant_age, TEff, ftsw; threshold_ftsw_stress=0.3, production_speed_initial=0.0111, production_speed_mature=0.0074)
-    production_speed = XPalm.age_relative_value.(
+    production_speed = XPalmModel.age_relative_value.(
         plant_age,
         0.0,
         2920,

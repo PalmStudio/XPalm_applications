@@ -1,4 +1,4 @@
-using XPalm.Models
+using XPalmModel.Models
 function model_mapping_theft(p)
     Dict(
         "Scene" => (

@@ -1,4 +1,4 @@
-using XPalm.Models
+using XPalmModel.Models
 function xpalm_mapping(p)
     Dict(
         "Scene" => (
