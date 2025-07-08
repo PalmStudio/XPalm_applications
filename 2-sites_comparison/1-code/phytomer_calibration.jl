@@ -1,5 +1,5 @@
-using XPalmModel
-using XPalmModel.PlantMeteo
+using XPalm
+using XPalm.PlantMeteo
 using PlantSimEngine
 using DataFrames, CSV, YAML
 using CairoMakie, AlgebraOfGraphics
@@ -12,20 +12,20 @@ includet("mapping.jl")
 
 # Make a simulation:
 begin
-    params_default = YAML.load_file("0-data/xpalm_parameters_new2.yml", dicttype=Dict{Symbol,Any})
+    params_default = YAML.load_file("0-data/xpalm_parameters_new2.yml")
 
     params_SMSE = copy(params_default)
-    params_SMSE[:latitude] = 2.93416
-    params_SMSE[:altitude] = 15.5
+    params_SMSE["plot"]["latitude"] = 2.93416
+    params_SMSE["plot"]["altitude"] = 15.5
 
     params_PRESCO = copy(params_default)
-    params_PRESCO[:latitude] = 6.137
-    params_PRESCO[:altitude] = 15.5
+    params_PRESCO["plot"]["latitude"] = 6.137
+    params_PRESCO["plot"]["altitude"] = 15.5
 
     params_TOWE = copy(params_default)
     # params_TOWE[:latitude] = 7.65
-    params_TOWE[:latitude] = 7.00
-    params_TOWE[:altitude] = 15.5
+    params_TOWE["plot"]["latitude"] = 7.00
+    params_TOWE["plot"]["altitude"] = 15.5
 
     params = Dict("SMSE" => params_SMSE, "PR" => params_PRESCO, "TOWE" => params_TOWE,)
     out_vars = Dict{String,Any}("Plant" => (:TEff, :plant_age, :ftsw, :phytomer_count,),)
@@ -34,9 +34,9 @@ begin
     for m in meteos
         # m = meteos[1]
         site = m[1].Site
-        palm = XPalmModel.Palm(initiation_age=0, parameters=params[site])
-        sim = XPalmModel.PlantSimEngine.run!(palm.mtg, xpalm_mapping(palm), m, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false)
-        df = XPalmModel.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
+        palm = XPalm.Palm(parameters=params[site])
+        df = xpalm(meteo, DataFrame, vars=out_vars, palm=palm)
+        df = df["Plant"]
         df[!, "Site"] .= site
         push!(simulations, df)
     end
@@ -50,7 +50,7 @@ end
 dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
 
 function phytomer_emergence(plant_age, TEff, ftsw; threshold_ftsw_stress=0.3, production_speed_initial=0.0111, production_speed_mature=0.0074)
-    production_speed = XPalmModel.age_relative_value.(
+    production_speed = XPalm.age_relative_value.(
         plant_age,
         0.0,
         2920,

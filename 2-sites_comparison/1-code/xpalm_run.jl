@@ -18,20 +18,20 @@ data(df_plot) * mapping(:date, :Tmin_cumulative, color=:Site => nonnumeric) * vi
 data(df_plot) * mapping(:date, :Tmax_cumulative, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 begin
-    params_default = YAML.load_file("0-data/xpalm_parameters.yml", dicttype=Dict{Symbol,Any})
+    params_default = YAML.load_file("0-data/xpalm_parameters.yml")
 
     params_SMSE = copy(params_default)
-    params_SMSE[:latitude] = 2.93416
-    params_SMSE[:altitude] = 15.5
+    params_SMSE["plot"]["latitude"] = 2.93416
+    params_SMSE["plot"]["altitude"] = 15.5
 
     params_PRESCO = copy(params_default)
-    params_PRESCO[:latitude] = 6.137
-    params_PRESCO[:altitude] = 15.5
+    params_PRESCO["plot"]["latitude"] = 6.137
+    params_PRESCO["plot"]["altitude"] = 15.5
 
     params_TOWE = copy(params_default)
     # params_TOWE[:latitude] = 7.65
-    params_TOWE[:latitude] = 7.00
-    params_TOWE[:altitude] = 15.5
+    params_TOWE["plot"]["latitude"] = 7.00
+    params_TOWE["plot"]["altitude"] = 15.5
 
     params = Dict("SMSE" => params_SMSE, "PR" => params_PRESCO, "TOWE" => params_TOWE,)
 
@@ -61,27 +61,23 @@ begin
         "Soil" => (:ftsw, :root_depth, :transpiration, :qty_H2O_C1, :qty_H2O_C2, :aPPFD),
     )
 
-    simulations = DataFrame[]
+    simulations = Dict{String,DataFrame}[]
     for m in meteos
         site = m[1].Site
-        palm = XPalmModel.Palm(initiation_age=0, parameters=params[site])
-        # sim = XPalmModel.PlantSimEngine.run!(palm.mtg, XPalmModel.model_mapping(palm), m, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false)
-        sim = XPalmModel.PlantSimEngine.run!(palm.mtg, xpalm_mapping(palm), m, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false)
-
-        df = XPalmModel.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
-        df[!, "Site"] .= site
+        palm = XPalm.Palm(parameters=params[site])
+        df = xpalm(meteo, DataFrame, vars=out_vars, palm=palm)
+        for (k, v) in df
+            v[!, "Site"] .= site
+        end
         push!(simulations, df)
     end
-
-    # Adding the dates to the simulations:
-    dfs_all = vcat(simulations...)
-    dfs_all = leftjoin(dfs_all, meteo, on=[:Site, :timestep,])
-    sort!(dfs_all, [:Site, :timestep])
 end
 
 #! Scene scale
-dfs_scene = filter(row -> row[:organ] == "Scene", dfs_all)
-select!(dfs_scene, findall(x -> any(!ismissing(i) for i in x), eachcol(dfs_scene)))
+df_scene = vcat([s["Scene"] for s in simulations]...)
+df_scene = leftjoin(df_scene, meteo, on=[:Site, :timestep])
+sort!(df_scene, [:Site, :timestep])
+
 dfs_scene_months = combine(groupby(dfs_scene, [:Site, :months_after_planting]), :lai => mean => :lai)
 p_lai = data(dfs_scene_months) * mapping(:months_after_planting, :lai, color=:Site => nonnumeric) * visual(Lines)
 draw(p_lai)
@@ -89,8 +85,10 @@ draw(p_lai)
 data(dfs_scene) * mapping(:timestep, :aPPFD => "Absorbed PPFD (MJ m⁻²[soil] d⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 #! Plant scale
-dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
-select!(dfs_plant, findall(x -> any(!ismissing(i) for i in x), eachcol(dfs_plant)))
+dfs_plant = vcat([s["Plant"] for s in simulations]...)
+dfs_plant = leftjoin(dfs_plant, meteo, on=[:Site, :timestep])
+sort!(dfs_plant, [:Site, :timestep])
+
 # combine(groupby(dfs_plant, :Site), :TEff => sum => :TEff)
 
 dfs_plant_month = combine(
@@ -215,8 +213,10 @@ p_ffb_year_plant = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harveste
 p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default[:scene_area] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 
-dfs_soil = filter(row -> row[:organ] == "Soil", dfs_all)
-select!(dfs_soil, findall(x -> any(!ismissing(i) for i in x), eachcol(dfs_soil)))
+dfs_soil = vcat([s["Soil"] for s in simulations]...)
+dfs_soil = leftjoin(dfs_soil, meteo, on=[:Site, :timestep])
+sort!(dfs_soil, [:Site, :timestep])
+
 data(dfs_soil) * mapping(:timestep, :ftsw, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_soil) * mapping(:timestep, :transpiration, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_soil) * mapping(:timestep, :root_depth, color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -227,7 +227,10 @@ data(filter(row -> row[:organ] == "Female" && row.Site == "SMSE", dfs_all)) * ma
 
 
 #! Females (bunches)
-df_female = filter(row -> row[:organ] == "Female", dfs_all)
+df_female = vcat([s["Female"] for s in simulations]...)
+df_female = leftjoin(df_female, meteo, on=[:Site, :timestep])
+sort!(df_female, [:Site, :timestep])
+
 select!(df_female, findall(x -> any(!ismissing(i) for i in x), eachcol(df_female)))
 
 df_female_month = combine(
@@ -250,7 +253,7 @@ days_increase_number_fruits = 2379.0
 days_maximum_number_fruits = 6500.0
 potential_fruit_number_at_maturity = 2000
 fraction_first_female = 0.3
-coeff = XPalmModel.age_relative_value.(1:length(meteos[1]), days_increase_number_fruits, days_maximum_number_fruits, fraction_first_female, 1.0)
+coeff = XPalm.age_relative_value.(1:length(meteos[1]), days_increase_number_fruits, days_maximum_number_fruits, fraction_first_female, 1.0)
 data(DataFrame(months_after_planting=meteos[1].months_after_planting, nfruits=coeff .* potential_fruit_number_at_maturity)) * mapping(:months_after_planting, :nfruits) * visual(Lines) |> draw()
 #! it should be around 600 at 50 MAP, then increasing to 1000 at 100MAP (and 2000 at 150MAP) (see PR site in CIGE data)
 
@@ -273,8 +276,9 @@ data(df_female_2) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * vi
 data(df_female_2) * mapping(:timestep, :biomass_fruits, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
 #! Males (inflorescences)
-df_male = filter(row -> row[:organ] == "Male", dfs_all)
-select!(df_male, findall(x -> any(!ismissing(i) for i in x), eachcol(df_male)))
+df_male = vcat([s["Male"] for s in simulations]...)
+df_male = leftjoin(df_male, meteo, on=[:Site, :timestep])
+sort!(df_male, [:Site, :timestep])
 
 df_male_month = combine(
     groupby(df_male, [:Site, :months_after_planting]),
@@ -306,7 +310,10 @@ data(df_male_one) * mapping(:months_after_planting, :biomass, color=:Site => non
 scatter(carbon_demand_male)
 
 #! Leaf scale
-df_leaf = filter(row -> row[:organ] == "Leaf", dfs_all)
+df_leaf = vcat([s["Leaf"] for s in simulations]...)
+df_leaf = leftjoin(df_leaf, meteo, on=[:Site, :timestep])
+sort!(df_leaf, [:Site, :timestep])
+
 select!(df_leaf, findall(x -> any(!ismissing(i) for i in x), eachcol(df_leaf)))
 
 #! control that all leaves have leaf area > 0
@@ -452,8 +459,9 @@ filter(row -> row.node == 386, df_phytomer_SMSE) |>
 draw()
 
 #! Internodes:
-df_internode = filter(row -> row[:organ] == "Internode", dfs_all)
-select!(df_internode, findall(x -> any(!ismissing(i) for i in x), eachcol(df_internode)))
+df_internode = vcat([s["Internode"] for s in simulations]...)
+df_internode = leftjoin(df_internode, meteo, on=[:Site, :timestep])
+sort!(df_internode, [:Site, :timestep])
 
 # plant scale results for internodes:
 df_internodes_plant = combine(
@@ -496,5 +504,5 @@ reserves_trunk = combine(groupby(df_internode, :timestep), :reserve => sum) ./ 1
 lines(reserves_trunk.reserve_sum)
 
 #! Using the notebook instead:
-using Pluto, XPalmModel
-XPalmModel.notebook("xpalm_notebook.jl")
+using Pluto, XPalm
+XPalm.notebook("xpalm_notebook.jl")

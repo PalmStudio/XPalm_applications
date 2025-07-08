@@ -21,9 +21,9 @@ begin
     import Pkg
     # activate a temporary environment
     Pkg.activate(mktempdir())
-    Pkg.develop([Pkg.PackageSpec(url="https://github.com/PalmStudio/XPalmModel.jl")])
+    Pkg.develop([Pkg.PackageSpec(url="https://github.com/PalmStudio/XPalm.jl")])
     Pkg.add([
-        #Pkg.PackageSpec(url="https://github.com/PalmStudio/XPalmModel.jl", rev="main"),
+        #Pkg.PackageSpec(url="https://github.com/PalmStudio/XPalm.jl", rev="main"),
         Pkg.PackageSpec(name="PlantSimEngine"),
         Pkg.PackageSpec(name="CairoMakie"),
         Pkg.PackageSpec(name="AlgebraOfGraphics"),
@@ -42,7 +42,7 @@ end
 
 # ╔═╡ 5dfdc85c-5f5a-48fc-a308-d205f862fb27
 begin
-    using PlantMeteo, DataFrames, CSV, Statistics, Dates, XPalmModel, YAML, PlantSimEngine
+    using PlantMeteo, DataFrames, CSV, Statistics, Dates, XPalm, YAML, PlantSimEngine
     using PlutoHooks, PlutoLinks, PlutoUI
     using HypertextLiteral
     using CairoMakie, AlgebraOfGraphics
@@ -64,7 +64,7 @@ md"""
 
 # ╔═╡ 1fa0b119-26fe-4807-8aea-50cdbd591656
 meteo = let
-    m = CSV.read(joinpath(dirname(dirname(pathof(XPalmModel))), "0-data/Meteo_Indonesia_SMSE.txt"), DataFrame)
+    m = CSV.read(joinpath(dirname(dirname(pathof(XPalm))), "0-data/Meteo_Indonesia_SMSE.txt"), DataFrame)
     m.duration = [Dates.Day(i[1:1]) for i in m.duration]
     #Weather(m)
     m
@@ -146,7 +146,7 @@ end
 
 # ╔═╡ bde1793e-983a-47e4-94a6-fbbe53fe72d6
 @bind multiscale_variables variables_display(
-    Dict(k => keys(merge(v...)) for (k, v) in PlantSimEngine.variables(XPalmModel.model_mapping(XPalmModel.Palm()))),
+    Dict(k => keys(merge(v...)) for (k, v) in PlantSimEngine.variables(XPalm.model_mapping(XPalm.Palm()))),
     default=Dict("Soil" => (:ftsw,), "Scene" => (:lai,), "Plant" => (:plant_leaf_area, :Rm, :aPPFD, :biomass_bunch_harvested), "Leaf" => (:leaf_area,))
 )
 
@@ -183,7 +183,7 @@ begin
     # Outputs 
     - `state`: phytomer state (undetermined,Aborted,Flowering,...)
     """
-    struct InfloStateModelTheft{I,T} <: XPalmModel.AbstractStateModel
+    struct InfloStateModelTheft{I,T} <: XPalm.AbstractStateModel
         rank_theft::I
         age_theft_start::I
         age_theft_end::I
@@ -209,7 +209,7 @@ begin
 
     PlantSimEngine.inputs_(::InfloStateModelTheft) = (TT_since_init=-Inf, sex="undetermined", rank=-9999)
     PlantSimEngine.outputs_(::InfloStateModelTheft) = (state="undetermined", state_organs=["undetermined"],)
-    PlantSimEngine.dep(::InfloStateModelTheft) = (abortion=XPalmModel.AbstractAbortionModel,)
+    PlantSimEngine.dep(::InfloStateModelTheft) = (abortion=XPalm.AbstractAbortionModel,)
 
     # At phytomer scale
     function PlantSimEngine.run!(m::InfloStateModelTheft, models, status, meteo, constants, extra=nothing)
@@ -256,49 +256,49 @@ end
 function model_mapping_theft(p)
     Dict(
         "Scene" => (
-            XPalmModel.ET0_BP(),
-            XPalmModel.DailyDegreeDays(),
+            XPalm.ET0_BP(),
+            XPalm.DailyDegreeDays(),
             MultiScaleModel(
-                model=XPalmModel.LAIModel(p.parameters[:scene_area]),
+                model=XPalm.LAIModel(p.parameters[:scene_area]),
                 mapping=[:leaf_area => ["Leaf"],],
             ),
-            XPalmModel.Beer(k=p.parameters[:k]),
-            XPalmModel.GraphNodeCount(length(p.mtg)), # to have the `graph_node_count` variable initialised in the status
+            XPalm.Beer(k=p.parameters[:k]),
+            XPalm.GraphNodeCount(length(p.mtg)), # to have the `graph_node_count` variable initialised in the status
         ),
         "Plant" => (
             MultiScaleModel(
-                model=XPalmModel.DegreeDaysFTSW(
+                model=XPalm.DegreeDaysFTSW(
                     threshold_ftsw_stress=p.parameters[:phyllochron][:threshold_ftsw_stress],
                 ),
                 mapping=[:ftsw => "Soil",],
             ),
-            XPalmModel.DailyPlantAgeModel(),
-            XPalmModel.PhyllochronModel(
+            XPalm.DailyPlantAgeModel(),
+            XPalm.PhyllochronModel(
                 p.parameters[:phyllochron][:age_palm_maturity],
                 p.parameters[:phyllochron][:threshold_ftsw_stress],
                 p.parameters[:phyllochron][:production_speed_initial],
                 p.parameters[:phyllochron][:production_speed_mature],
             ),
             MultiScaleModel(
-                model=XPalmModel.PlantLeafAreaModel(),
+                model=XPalm.PlantLeafAreaModel(),
                 mapping=[:leaf_area => ["Leaf"],],
             ),
             MultiScaleModel(
-                model=XPalmModel.PhytomerEmission(p.mtg),
+                model=XPalm.PhytomerEmission(p.mtg),
                 mapping=[:graph_node_count => "Scene",],
             ),
             MultiScaleModel(
-                model=XPalmModel.PlantRm(),
+                model=XPalm.PlantRm(),
                 mapping=[:Rm_organs => ["Leaf", "Internode", "Male", "Female"] .=> :Rm],
             ),
             MultiScaleModel(
-                model=XPalmModel.SceneToPlantLightPartitioning(p.parameters[:scene_area]),
+                model=XPalm.SceneToPlantLightPartitioning(p.parameters[:scene_area]),
                 mapping=[:aPPFD_scene => "Scene" => :aPPFD, :scene_leaf_area => "Scene"],
             ),
-            XPalmModel.ConstantRUEModel(p.parameters[:RUE]),
-            XPalmModel.CarbonOfferRm(),
+            XPalm.ConstantRUEModel(p.parameters[:RUE]),
+            XPalm.CarbonOfferRm(),
             MultiScaleModel(
-                model=XPalmModel.OrgansCarbonAllocationModel(p.parameters[:carbon_demand][:reserves][:cost_reserve_mobilization]),
+                model=XPalm.OrgansCarbonAllocationModel(p.parameters[:carbon_demand][:reserves][:cost_reserve_mobilization]),
                 mapping=[
                     :carbon_demand_organs => ["Leaf", "Internode", "Male", "Female"] .=> :carbon_demand,
                     :carbon_allocation_organs => ["Leaf", "Internode", "Male", "Female"] .=> :carbon_allocation,
@@ -307,14 +307,14 @@ function model_mapping_theft(p)
                 ],
             ),
             MultiScaleModel(
-                model=XPalmModel.OrganReserveFilling(),
+                model=XPalm.OrganReserveFilling(),
                 mapping=[
                     :potential_reserve_organs => ["Internode", "Leaf"] .=> :potential_reserve,
                     :reserve_organs => ["Internode", "Leaf"] .=> :reserve,
                 ],
             ),
             MultiScaleModel(
-                model=XPalmModel.PlantBunchHarvest(),
+                model=XPalm.PlantBunchHarvest(),
                 mapping=[
                     :biomass_bunch_harvested_organs => ["Female"] .=> :biomass_bunch_harvested,
                     :biomass_stalk_harvested_organs => ["Female"] .=> :biomass_stalk_harvested,
@@ -324,18 +324,18 @@ function model_mapping_theft(p)
         ),
         "Phytomer" => (
             MultiScaleModel(
-                model=XPalmModel.InitiationAgeFromPlantAge(),
+                model=XPalm.InitiationAgeFromPlantAge(),
                 mapping=[:plant_age => "Plant",],
             ),
             # DegreeDaysFTSW(
             #     threshold_ftsw_stress=p.parameters[:phyllochron][:threshold_ftsw_stress],
             # ), #! we should use this one instead of DailyDegreeDaysSinceInit I think
             MultiScaleModel(
-                model=XPalmModel.DailyDegreeDaysSinceInit(),
+                model=XPalm.DailyDegreeDaysSinceInit(),
                 mapping=[:TEff => "Plant",], # Using TEff computed at plant scale
             ),
             MultiScaleModel(
-                model=XPalmModel.SexDetermination(
+                model=XPalm.SexDetermination(
                     TT_flowering=p.parameters[:inflo][:TT_flowering],
                     duration_abortion=p.parameters[:inflo][:duration_abortion],
                     duration_sex_determination=p.parameters[:inflo][:duration_sex_determination],
@@ -349,11 +349,11 @@ function model_mapping_theft(p)
                 ],
             ),
             MultiScaleModel(
-                model=XPalmModel.ReproductiveOrganEmission(p.mtg),
+                model=XPalm.ReproductiveOrganEmission(p.mtg),
                 mapping=[:graph_node_count => "Scene", :phytomer_count => "Plant"],
             ),
             MultiScaleModel(
-                model=XPalmModel.AbortionRate(
+                model=XPalm.AbortionRate(
                     TT_flowering=p.parameters[:inflo][:TT_flowering],
                     duration_abortion=p.parameters[:inflo][:duration_abortion],
                     abortion_rate_max=p.parameters[:inflo][:abortion_rate_max],
@@ -385,15 +385,15 @@ function model_mapping_theft(p)
         "Internode" =>
             (
                 MultiScaleModel(
-                    model=XPalmModel.InitiationAgeFromPlantAge(),
+                    model=XPalm.InitiationAgeFromPlantAge(),
                     mapping=[:plant_age => "Plant",],
                 ),
                 MultiScaleModel(
-                    model=XPalmModel.DailyDegreeDaysSinceInit(),
+                    model=XPalm.DailyDegreeDaysSinceInit(),
                     mapping=[:TEff => "Plant",], # Using TEff computed at plant scale
                 ),
                 MultiScaleModel(
-                    model=XPalmModel.RmQ10FixedN(
+                    model=XPalm.RmQ10FixedN(
                         p.parameters[:respiration][:Internode][:Q10],
                         p.parameters[:respiration][:Internode][:Rm_base],
                         p.parameters[:respiration][:Internode][:T_ref],
@@ -402,7 +402,7 @@ function model_mapping_theft(p)
                     ),
                     mapping=[PreviousTimeStep(:biomass),],
                 ),
-                XPalmModel.FinalPotentialInternodeDimensionModel(
+                XPalm.FinalPotentialInternodeDimensionModel(
                     p.parameters[:potential_dimensions][:age_max_height],
                     p.parameters[:potential_dimensions][:age_max_radius],
                     p.parameters[:potential_dimensions][:min_height],
@@ -410,57 +410,57 @@ function model_mapping_theft(p)
                     p.parameters[:potential_dimensions][:max_height],
                     p.parameters[:potential_dimensions][:max_radius],
                 ),
-                XPalmModel.PotentialInternodeDimensionModel(
+                XPalm.PotentialInternodeDimensionModel(
                     p.parameters[:potential_dimensions][:inflexion_point_height],
                     p.parameters[:potential_dimensions][:slope_height],
                     p.parameters[:potential_dimensions][:inflexion_point_radius],
                     p.parameters[:potential_dimensions][:slope_radius],
                 ),
-                XPalmModel.InternodeCarbonDemandModel(
+                XPalm.InternodeCarbonDemandModel(
                     p.parameters[:carbon_demand][:internode][:stem_apparent_density],
                     p.parameters[:carbon_demand][:internode][:respiration_cost]
                 ),
                 MultiScaleModel(
-                    model=XPalmModel.PotentialReserveInternode(
+                    model=XPalm.PotentialReserveInternode(
                         p.parameters[:nsc_max]
                     ),
                     mapping=[PreviousTimeStep(:biomass), PreviousTimeStep(:reserve)],
                 ),
-                XPalmModel.InternodeBiomass(
+                XPalm.InternodeBiomass(
                     initial_biomass=p.parameters[:potential_dimensions][:min_height] * p.parameters[:potential_dimensions][:min_radius] * p.parameters[:carbon_demand][:internode][:stem_apparent_density],
                     respiration_cost=p.parameters[:carbon_demand][:internode][:respiration_cost]
                 ),
-                XPalmModel.InternodeDimensionModel(p.parameters[:carbon_demand][:internode][:stem_apparent_density]),
+                XPalm.InternodeDimensionModel(p.parameters[:carbon_demand][:internode][:stem_apparent_density]),
             ),
         "Leaf" => (
             MultiScaleModel(
-                model=XPalmModel.DailyDegreeDaysSinceInit(),
+                model=XPalm.DailyDegreeDaysSinceInit(),
                 mapping=[:TEff => "Plant",], # Using TEff computed at plant scale
             ),
-            XPalmModel.FinalPotentialAreaModel(
+            XPalm.FinalPotentialAreaModel(
                 p.parameters[:potential_area][:age_first_mature_leaf],
                 p.parameters[:potential_area][:leaf_area_first_leaf],
                 p.parameters[:potential_area][:leaf_area_mature_leaf],
             ),
-            XPalmModel.PotentialAreaModel(
+            XPalm.PotentialAreaModel(
                 p.parameters[:potential_area][:inflexion_index],
                 p.parameters[:potential_area][:slope],
             ),
             MultiScaleModel(
-                model=XPalmModel.LeafStateModel(),
+                model=XPalm.LeafStateModel(),
                 mapping=[:rank_phytomers => ["Phytomer" => :rank], :state_phytomers => ["Phytomer" => :state],],
             ),
             MultiScaleModel(
-                model=XPalmModel.LeafRankModel(),
+                model=XPalm.LeafRankModel(),
                 mapping=[:rank_phytomers => ["Phytomer" => :rank],],
             ),
-            XPalmModel.RankLeafPruning(p.parameters[:rank_leaf_pruning]),
+            XPalm.RankLeafPruning(p.parameters[:rank_leaf_pruning]),
             MultiScaleModel(
-                model=XPalmModel.InitiationAgeFromPlantAge(),
+                model=XPalm.InitiationAgeFromPlantAge(),
                 mapping=[:plant_age => "Plant",],
             ),
             MultiScaleModel(
-                model=XPalmModel.LeafAreaModel(
+                model=XPalm.LeafAreaModel(
                     p.parameters[:lma_min],
                     p.parameters[:leaflets_biomass_contribution],
                     p.parameters[:potential_area][:leaf_area_first_leaf],
@@ -468,7 +468,7 @@ function model_mapping_theft(p)
                 mapping=[PreviousTimeStep(:biomass),],
             ),
             MultiScaleModel(
-                model=XPalmModel.RmQ10FixedN(
+                model=XPalm.RmQ10FixedN(
                     p.parameters[:respiration][:Leaf][:Q10],
                     p.parameters[:respiration][:Leaf][:Rm_base],
                     p.parameters[:respiration][:Leaf][:T_ref],
@@ -477,20 +477,20 @@ function model_mapping_theft(p)
                 ),
                 mapping=[PreviousTimeStep(:biomass),],
             ),
-            XPalmModel.LeafCarbonDemandModelPotentialArea(
+            XPalm.LeafCarbonDemandModelPotentialArea(
                 p.parameters[:lma_min],
                 p.parameters[:carbon_demand][:leaf][:respiration_cost],
                 p.parameters[:leaflets_biomass_contribution]
             ),
             MultiScaleModel(
-                model=XPalmModel.PotentialReserveLeaf(
+                model=XPalm.PotentialReserveLeaf(
                     p.parameters[:lma_min],
                     p.parameters[:lma_max],
                     p.parameters[:leaflets_biomass_contribution]
                 ),
                 mapping=[PreviousTimeStep(:leaf_area), PreviousTimeStep(:reserve)],
             ),
-            XPalmModel.LeafBiomass(
+            XPalm.LeafBiomass(
                 initial_biomass=p.parameters[:potential_area][:leaf_area_first_leaf] * p.parameters[:lma_min] /
                                 p.parameters[:leaflets_biomass_contribution],
                 respiration_cost=p.parameters[:carbon_demand][:leaf][:respiration_cost],
@@ -498,20 +498,20 @@ function model_mapping_theft(p)
         ),
         "Male" => (
             MultiScaleModel(
-                model=XPalmModel.InitiationAgeFromPlantAge(),
+                model=XPalm.InitiationAgeFromPlantAge(),
                 mapping=[:plant_age => "Plant",],
             ),
             MultiScaleModel(
-                model=XPalmModel.DailyDegreeDaysSinceInit(),
+                model=XPalm.DailyDegreeDaysSinceInit(),
                 mapping=[:TEff => "Plant",], # Using TEff computed at plant scale
             ),
-            XPalmModel.MaleFinalPotentialBiomass(
+            XPalm.MaleFinalPotentialBiomass(
                 p.parameters[:male][:male_max_biomass],
                 p.parameters[:male][:age_mature_male],
                 p.parameters[:male][:fraction_biomass_first_male],
             ),
             MultiScaleModel(
-                model=XPalmModel.RmQ10FixedN(
+                model=XPalm.RmQ10FixedN(
                     p.parameters[:respiration][:Male][:Q10],
                     p.parameters[:respiration][:Male][:Rm_base],
                     p.parameters[:respiration][:Male][:T_ref],
@@ -520,26 +520,26 @@ function model_mapping_theft(p)
                 ),
                 mapping=[PreviousTimeStep(:biomass),],
             ),
-            XPalmModel.MaleCarbonDemandModel(
+            XPalm.MaleCarbonDemandModel(
                 p.parameters[:carbon_demand][:male][:respiration_cost],
                 p.parameters[:inflo][:TT_flowering],
                 p.parameters[:male][:duration_flowering_male],
             ),
-            XPalmModel.MaleBiomass(
+            XPalm.MaleBiomass(
                 p.parameters[:carbon_demand][:male][:respiration_cost],
             ),
         ),
         "Female" => (
             MultiScaleModel(
-                model=XPalmModel.InitiationAgeFromPlantAge(),
+                model=XPalm.InitiationAgeFromPlantAge(),
                 mapping=[:plant_age => "Plant",],
             ),
             MultiScaleModel(
-                model=XPalmModel.DailyDegreeDaysSinceInit(),
+                model=XPalm.DailyDegreeDaysSinceInit(),
                 mapping=[:TEff => "Plant",],
             ),
             MultiScaleModel(
-                model=XPalmModel.RmQ10FixedN(
+                model=XPalm.RmQ10FixedN(
                     p.parameters[:respiration][:Female][:Q10],
                     p.parameters[:respiration][:Female][:Rm_base],
                     p.parameters[:respiration][:Female][:T_ref],
@@ -548,7 +548,7 @@ function model_mapping_theft(p)
                 ),
                 mapping=[PreviousTimeStep(:biomass),],
             ),
-            XPalmModel.FemaleFinalPotentialFruits(
+            XPalm.FemaleFinalPotentialFruits(
                 p.parameters[:female][:age_mature_female],
                 p.parameters[:female][:fraction_first_female],
                 p.parameters[:female][:potential_fruit_number_at_maturity],
@@ -556,20 +556,20 @@ function model_mapping_theft(p)
                 p.parameters[:female][:stalk_max_biomass],
             ),
             MultiScaleModel(
-                model=XPalmModel.NumberSpikelets(
+                model=XPalm.NumberSpikelets(
                     TT_flowering=p.parameters[:inflo][:TT_flowering],
                     duration_dev_spikelets=p.parameters[:female][:duration_dev_spikelets],
                 ),
                 mapping=[PreviousTimeStep(:carbon_offer_plant) => "Plant" => :carbon_offer_after_rm, PreviousTimeStep(:carbon_demand_plant) => "Plant" => :carbon_demand],
             ),
             MultiScaleModel(
-                model=XPalmModel.NumberFruits(
+                model=XPalm.NumberFruits(
                     TT_flowering=p.parameters[:inflo][:TT_flowering],
                     duration_fruit_setting=p.parameters[:female][:duration_fruit_setting],
                 ),
                 mapping=[PreviousTimeStep(:carbon_offer_plant) => "Plant" => :carbon_offer_after_rm, PreviousTimeStep(:carbon_demand_plant) => "Plant" => :carbon_demand],
             ),
-            XPalmModel.FemaleCarbonDemandModel(
+            XPalm.FemaleCarbonDemandModel(
                 p.parameters[:carbon_demand][:female][:respiration_cost],
                 p.parameters[:carbon_demand][:female][:respiration_cost_oleosynthesis],
                 p.parameters[:inflo][:TT_flowering],
@@ -579,26 +579,26 @@ function model_mapping_theft(p)
                 p.parameters[:female][:fraction_period_oleosynthesis],
                 p.parameters[:female][:fraction_period_stalk],
             ),
-            XPalmModel.FemaleBiomass(
+            XPalm.FemaleBiomass(
                 p.parameters[:carbon_demand][:female][:respiration_cost],
                 p.parameters[:carbon_demand][:female][:respiration_cost_oleosynthesis],
             ),
-            XPalmModel.BunchHarvest(),
+            XPalm.BunchHarvest(),
         ),
         "RootSystem" => (
             MultiScaleModel(
-                model=XPalmModel.DailyDegreeDaysSinceInit(),
+                model=XPalm.DailyDegreeDaysSinceInit(),
                 mapping=[:TEff => "Scene",], # Using TEff computed at scene scale
             ),
         ),
         "Soil" => (
             # light_interception=Beer{Soil}(),
             MultiScaleModel(
-                model=XPalmModel.FTSW(ini_root_depth=p.parameters[:ini_root_depth]),
+                model=XPalm.FTSW(ini_root_depth=p.parameters[:ini_root_depth]),
                 mapping=[:ET0 => "Scene", :aPPFD => "Scene"], # Using TEff computed at scene scale
             ),
             MultiScaleModel(
-                model=XPalmModel.RootGrowthFTSW(ini_root_depth=p.parameters[:ini_root_depth]),
+                model=XPalm.RootGrowthFTSW(ini_root_depth=p.parameters[:ini_root_depth]),
                 mapping=[:TEff => "Scene",], # Using TEff computed at scene scale
             ),
         )
@@ -607,7 +607,7 @@ end
 
 # ╔═╡ 8bc0ac37-e34e-469b-9346-0231aa28be63
 df = let
-    p = XPalmModel.Palm(parameters=params)
+    p = XPalm.Palm(parameters=params)
     models = model_mapping_theft(p)
     if length(variables_dict) > 0
         out = PlantSimEngine.run!(p.mtg, models, meteo, outputs=variables_dict, executor=PlantSimEngine.SequentialEx(), check=false)

@@ -22,7 +22,7 @@ begin
     # activate a temporary environment
     Pkg.activate(mktempdir())
     Pkg.add([
-        Pkg.PackageSpec(url="https://github.com/PalmStudio/XPalmModel.jl", rev="main"),
+        Pkg.PackageSpec(url="https://github.com/PalmStudio/XPalm.jl", rev="main"),
         Pkg.PackageSpec(name="CairoMakie"),
         Pkg.PackageSpec(name="AlgebraOfGraphics"),
         Pkg.PackageSpec(name="PlantMeteo"),
@@ -40,7 +40,7 @@ end
 
 # ╔═╡ 5dfdc85c-5f5a-48fc-a308-d205f862fb27
 begin
-    using PlantMeteo, DataFrames, CSV, Statistics, Dates, XPalmModel, YAML
+    using PlantMeteo, DataFrames, CSV, Statistics, Dates, XPalm, YAML
     using PlutoHooks, PlutoLinks, PlutoUI
     using HypertextLiteral
     using CairoMakie, AlgebraOfGraphics
@@ -146,7 +146,7 @@ end
 
 # ╔═╡ bde1793e-983a-47e4-94a6-fbbe53fe72d6
 @bind variables variables_display(
-    Dict(k => keys(merge(v...)) for (k, v) in XPalmModel.PlantSimEngine.variables(XPalmModel.model_mapping(XPalmModel.Palm()))),
+    Dict(k => keys(merge(v...)) for (k, v) in XPalm.PlantSimEngine.variables(XPalm.model_mapping(XPalm.Palm()))),
     default=Dict("Soil" => (:ftsw,), "Scene" => (:lai,), "Plant" => (:leaf_area, :Rm, :aPPFD, :biomass_bunch_harvested), "Leaf" => (:leaf_area,))
 )
 
@@ -155,7 +155,7 @@ variables_dict = filter(x -> length(last(x)) > 0, Dict{String,Any}(zip(string.(k
 
 # ╔═╡ 8bc0ac37-e34e-469b-9346-0231aa28be63
 df = let
-    p = XPalmModel.Palm(parameters=params)
+    p = XPalm.Palm(parameters=params)
     if length(variables_dict) > 0
         sim = xpalm(meteo, DataFrame; palm=p, vars=variables_dict)
         dfs_all = leftjoin(sim, meteo, on=:timestep)
