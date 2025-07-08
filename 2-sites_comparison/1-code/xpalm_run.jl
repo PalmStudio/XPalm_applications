@@ -1,7 +1,7 @@
-using XPalmModel, CSV, DataFrames, YAML
+using XPalm, CSV, DataFrames, YAML
 using CairoMakie, AlgebraOfGraphics
 import PlantSimEngine: MultiScaleModel, PreviousTimeStep
-using XPalmModel.Models
+using XPalm.Models
 using PlantMeteo
 using Dates
 using Statistics
