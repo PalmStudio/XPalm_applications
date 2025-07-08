@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.20.4
+# v0.20.6
 
 using Markdown
 using InteractiveUtils
@@ -7,7 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     #! format: off
-    quote
+    return quote
         local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
@@ -108,28 +108,6 @@ md"""
 # References
 """
 
-# ╔═╡ 1dbed83e-ec41-4daf-b398-4089e66b9842
-function multiscale_variables_display(vars, Child, input_function, default)
-    var_body = []
-    for (key, values) in vars
-        variable_names = sort(collect(values), by=x -> string(x) |> lowercase)
-        length(variable_names) == 0 && continue
-        Dict("Soil" => (:ftsw,), "Scene" => (:lai,), "Plant" => (:leaf_area, :Rm, :aPPFD, :biomass_bunch_harvested_organs), "Leaf" => (:leaf_area,))
-        default_at_scale = [get(default, key, ())...]
-
-        push!(var_body,
-            @htl("""
-            <div style="display: inline-flex; flex-direction: column; padding: 5px 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);">
-                     <h3 style="margin: 0 0 5px 0; font-size: 1em;">$key</h3>
-            	$(Child(key, input_function(variable_names, default_at_scale)))
-            </div>
-            """)
-        )
-    end
-
-    return var_body
-end
-
 # ╔═╡ 96737f48-5478-4fbc-b72b-1ca33efa4846
 function variables_display(vars; input_function=(x, default) -> PlutoUI.MultiCheckBox(x, orientation=:row, default=default), default=Dict())
     PlutoUI.combine() do Child
@@ -227,6 +205,28 @@ let
     end
 
     htl"<h5>Plots:</h5>$htmlplots"
+end
+
+# ╔═╡ 1dbed83e-ec41-4daf-b398-4089e66b9842
+function multiscale_variables_display(vars, Child, input_function, default)
+    var_body = []
+    for (key, values) in vars
+        variable_names = sort(collect(values), by=x -> string(x) |> lowercase)
+        length(variable_names) == 0 && continue
+        Dict("Soil" => (:ftsw,), "Scene" => (:lai,), "Plant" => (:leaf_area, :Rm, :aPPFD, :biomass_bunch_harvested_organs), "Leaf" => (:leaf_area,))
+        default_at_scale = [get(default, key, ())...]
+
+        push!(var_body,
+            @htl("""
+            <div style="display: inline-flex; flex-direction: column; padding: 5px 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.1);">
+                     <h3 style="margin: 0 0 5px 0; font-size: 1em;">$key</h3>
+            	$(Child(key, input_function(variable_names, default_at_scale)))
+            </div>
+            """)
+        )
+    end
+
+    return var_body
 end
 
 # ╔═╡ Cell order:

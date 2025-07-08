@@ -1,10 +1,10 @@
-using XPalmModel, CSV, DataFrames, YAML
+using XPalm, CSV, DataFrames, YAML
 using CairoMakie, AlgebraOfGraphics
-using XPalmModel.PlantMeteo
+using PlantMeteo
 using Dates
 using Statistics
 
-meteo = Weather(CSV.read("0-data/Meteo_Indonesia_SMSE.txt", DataFrame))
+meteo = Weather(CSV.read("0-data/meteo.csv", DataFrame))
 params = YAML.load_file("0-data/xpalm_parameters.yml", dicttype=Dict{Symbol,Any})
 
 out_vars = Dict{String,Any}(
@@ -28,22 +28,28 @@ out_vars = Dict{String,Any}(
     # "Soil" => (:TEff, :ftsw, :root_depth),
 )
 
-palm = XPalmModel.Palm(initiation_age=0, parameters=XPalmModel.default_parameters())
-@time sim = XPalmModel.PlantSimEngine.run!(palm.mtg, XPalmModel.model_mapping(palm), meteo, outputs=out_vars, executor=XPalmModel.PlantSimEngine.SequentialEx(), check=false);
-# 6.5s
-@time df = XPalmModel.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
+df = xpalm(meteo, DataFrame; vars=out_vars)
+# palm = XPalm.Palm(initiation_age=0, parameters=XPalm.default_parameters())
+# @time sim = XPalm.PlantSimEngine.run!(palm.mtg, XPalm.model_mapping(palm), meteo, outputs=out_vars, executor=XPalm.PlantSimEngine.SequentialEx(), check=false);
+# # 6.5s
+# @time df = XPalm.PlantSimEngine.outputs(sim, DataFrame, no_value=missing)
 
-df_phytomer = filter(row -> row[:organ] == "Phytomer", df)
+df_phytomer = df["Phytomer"]
 scatter(df_phytomer.timestep, df_phytomer.rank, color=:green, markersize=3)
 
 filter(row -> row.node == 6, df_phytomer) |>
 (x -> data(x) * mapping(:timestep, :rank, color=:node => nonnumeric) * visual(Lines)) |>
 draw()
 
+
+p = data(dfscene) * mapping(:timestep, :lai, color=:node => nonnumeric) * visual(Lines)
+draw(p)
+
+
 scatter(filter(x -> x.node == 699, df_phytomer).rank)
 print(filter(x -> x.node == 699, df_phytomer).rank)
 
-df_scene = filter(row -> row[:organ] == "Scene", df)
+df_scene = df["Scene"]
 df_scene.date = meteo.date
 df_scene.yearmonth = [Date(Dates.yearmonth(d)...) for d in df_scene.date]
 # Computes the index of the month since the beginning of the simulation:
@@ -54,7 +60,7 @@ maximum(df_scene.lai)
 
 scatter(df_scene.lai[365*10:min(365 * 12, length(df_scene.lai))])
 
-df_plant = filter(row -> row[:organ] == "Plant", df)
+df_plant = df["Plant"]
 df_plant.date = meteo.date
 df_plant.yearmonth = [Date(Dates.yearmonth(d)...) for d in df_plant.date]
 # Computes the index of the month since the beginning of the simulation:
@@ -119,7 +125,7 @@ scatter(df_internode_one.timestep, df_internode_one.biomass .* 0.001795000000000
 scatter(df_internode_one.Rm[2:end], color=:green, markersize=3)
 
 
-df_leaf = filter(row -> row[:organ] == "Leaf", df)
+df_leaf = df["Leaf"]
 
 # Count the number of occurence of each leaf state:
 combine(groupby(filter(row -> row.timestep == 4291, df_leaf), :leaf_state), :leaf_state => length)
@@ -138,7 +144,7 @@ scatter(df_leaf_8.carbon_demand)
 scatter(df_leaf_8.rank)
 df_leaf_8.reserve
 
-df_leaf_one = filter(row -> row[:node] == 853, df_leaf)
+df_leaf_one = filter(row -> row[:node] == 854, df_leaf)
 scatter(df_leaf_one.timestep, df_leaf_one.final_potential_area, color=:green, markersize=3)
 scatter(df_leaf_one.timestep, df_leaf_one.potential_area, color=:green, markersize=3)
 scatter(df_leaf_one.timestep, df_leaf_one.increment_potential_area, color=:green, markersize=3)
@@ -171,17 +177,17 @@ sum(df_female_other.carbon_demand)
 
 
 # Using a notebook instead:
-using Pluto, XPalmModel
-XPalmModel.notebook("xpalm_notebook.jl")
+using Pluto, XPalm
+XPalm.notebook("xpalm_notebook.jl")
 
 
 #! To remove:
 # Read the parameters from a YAML file (provided in the example folder of the package):
 using YAML
-parameters = YAML.load_file(joinpath(dirname(dirname(pathof(XPalmModel))), "examples/xpalm_parameters.yml"); dicttype=Dict{Symbol,Any})
+parameters = YAML.load_file(joinpath(dirname(dirname(pathof(XPalm))), "examples/xpalm_parameters.yml"); dicttype=Dict{Symbol,Any})
 
 # Create palm with custom parameters
-p = XPalmModel.Palm(parameters=parameters)
+p = XPalm.Palm(parameters=parameters)
 
 # Run simulation with multiple outputs
 results = xpalm(
