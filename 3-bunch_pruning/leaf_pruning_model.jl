@@ -27,7 +27,7 @@ Function to remove leaf biomass and area when the phytomer 1/ has an harvested b
 - `is_pruned`: boolean indicating if the leaf is pruned or not
 
 """
-struct RankLeafPruningWindow{T,D} <: XPalmModel.Models.AbstractLeaf_PruningModel
+struct RankLeafPruningWindow{T,D} <: XPalm.Models.AbstractLeaf_PruningModel
     rank::T
     rank_window::T
     start_date::D
