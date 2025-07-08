@@ -58,8 +58,8 @@ for i in combinations
 
     palm = XPalm.Palm(initiation_age=0, parameters=parameters)
     models = model_mapping_theft(palm)
-    out = PlantSimEngine.run!(palm.mtg, models, meteo_w, outputs=out_vars, executor=PlantSimEngine.SequentialEx())
-    df = PlantSimEngine.outputs(out, DataFrame, no_value=missing)
+    out = PlantSimEngine.run!(palm.mtg, models, meteo_w, tracked_outputs=out_vars, executor=PlantSimEngine.SequentialEx())
+    df = PlantSimEngine.convert_outputs(out, DataFrame, no_value=missing)
 
     for (k, v) in df
         v[!, "rank_leaves_left"] .= i.rank
@@ -86,11 +86,13 @@ planting_aes = mapping([0], color="Planting" => AlgebraOfGraphics.scale(:seconda
 planting_aes_year = mapping([age_start[1]], color="Planting" => AlgebraOfGraphics.scale(:secondary)) * visual(VLines, linestyle=:dash)
 
 # Adding the dates to the simulations:
-dfs_all = vcat(simulations...)
-dfs_all = leftjoin(dfs_all, meteo, on=:timestep)
-sort!(dfs_all, :timestep)
+# dfs_all = vcat(simulations...)
+# dfs_all = leftjoin(dfs_all, meteo, on=:timestep)
+# sort!(dfs_all, :timestep)
 
-df_scene = filter(x -> x.organ == "Scene", dfs_all)
+df_scene = vcat([s["Scene"] for s in simulations]...)
+df_scene = leftjoin(df_scene, meteo, on=:timestep)
+sort!(df_scene, :timestep)
 dfs_scene_months = combine(
     groupby(df_scene, [:months_after_planting, :rank_leaves_left, :window_duration]),
     :lai => maximum => :lai
@@ -104,11 +106,12 @@ p_lai =
     planting_aes |>
     draw(figure=(size=(800, 600),))
 
-save("outputs/lai.png", p_lai, px_per_unit=3)
+save("outputs/lai_new.png", p_lai, px_per_unit=3)
 
 #! Plant scale
-dfs_plant = filter(row -> row[:organ] == "Plant", dfs_all)
-select!(dfs_plant, findall(x -> any(!ismissing(i) for i in x), eachcol(dfs_plant)))
+dfs_plant = vcat([s["Plant"] for s in simulations]...)
+dfs_plant = leftjoin(dfs_plant, meteo, on=:timestep)
+sort!(dfs_plant, :timestep)
 
 dfs_plant_month = combine(
     groupby(dfs_plant, [:months_after_planting, :rank_leaves_left, :window_duration]),
@@ -140,7 +143,7 @@ p_ffb_year_plant =
     mapping(:year => Date => "Date", :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) *
     visual(Lines) |>
     draw(figure=(size=(1200, 600),))
-save("outputs/ffb_year_plant.png", p_ffb_year_plant, px_per_unit=3)
+save("outputs/ffb_year_plant_new.png", p_ffb_year_plant, px_per_unit=3)
 
 p_ffb_month_plant =
     pruning_aes(120, df_pruning) +
@@ -148,7 +151,7 @@ p_ffb_month_plant =
     mapping(:months_after_planting => "Months after planting", :biomass_bunch_harvested_monthly => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ month⁻¹)", color=rank_leaves_left_aes, col=:window_duration) *
     visual(Scatter) + planting_aes |>
     draw(figure=(size=(800, 600),))
-save("outputs/ffb_month_plant.png", p_ffb_month_plant, px_per_unit=3)
+save("outputs/ffb_month_plant_new.png", p_ffb_month_plant, px_per_unit=3)
 
 p_ffb_cum_plant =
     pruning_aes(6000, df_pruning) +
@@ -156,46 +159,43 @@ p_ffb_cum_plant =
     mapping(:months_after_planting => "Months after planting", :biomass_bunch_harvested_cum => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "Cumulated FFB (kg plant⁻¹)", color=rank_leaves_left_aes, col=:window_duration) *
     visual(Lines) + planting_aes |>
     draw(figure=(size=(800, 600),))
-save("outputs/ffb_year_cum_plant.png", p_ffb_cum_plant, px_per_unit=3)
+save("outputs/ffb_year_cum_plant_new.png", p_ffb_cum_plant, px_per_unit=3)
 
 #! FFB (yield, t ha-1):
-p_ffb_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
-save("outputs/ffb_year_plot.png", p_ffb_year_plot, px_per_unit=3, resolution=(800, 600))
-p_fruits_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_fruit_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => "Fruit yield (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
-save("outputs/p_fruit_yields_year_plot.png", p_fruits_year_plot, px_per_unit=3, resolution=(800, 600))
+p_ffb_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
+save("outputs/ffb_year_plot_new.png", p_ffb_year_plot, px_per_unit=3, resolution=(800, 600))
+p_fruits_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_fruit_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => "Fruit yield (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
+save("outputs/p_fruit_yields_year_plot_new.png", p_fruits_year_plot, px_per_unit=3, resolution=(800, 600))
 
-p_ffb_cum_year_plot = data(dfs_plant_month) * mapping(:months_after_planting => "Months after planting", :biomass_bunch_harvested_cum => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => "Cumulated FFB (t ha⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
-save("outputs/ffb_year_cum_plot.png", p_ffb_cum_year_plot, px_per_unit=3)
+p_ffb_cum_year_plot = data(dfs_plant_month) * mapping(:months_after_planting => "Months after planting", :biomass_bunch_harvested_cum => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => "Cumulated FFB (t ha⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
+save("outputs/ffb_year_cum_plot_new.png", p_ffb_cum_year_plot, px_per_unit=3)
 
 df_ffb = combine(
     groupby(dfs_plant_year, [:rank_leaves_left, :window_duration]),
-    :biomass_bunch_harvested_cum => (x -> last(x) * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => :biomass_bunch_harvested_cum_t_ha,
+    :biomass_bunch_harvested_cum => (x -> last(x) * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => :biomass_bunch_harvested_cum_t_ha,
 )
 
 df_during_and_after_window = combine(
     groupby(filter(x -> x.year >= year(age_start[1]), dfs_plant_year), [:rank_leaves_left, :window_duration]),
-    :biomass_bunch_harvested => (x -> sum(x) * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => :biomass_bunch_harvested_cum_t_ha,
+    :biomass_bunch_harvested => (x -> sum(x) * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => :biomass_bunch_harvested_cum_t_ha,
 )
 
 df_after_window = combine(
     groupby(filter(x -> x.year > year(age_start[1]), dfs_plant_year), [:rank_leaves_left, :window_duration]),
-    :biomass_bunch_harvested => (x -> sum(x) * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters[:scene_area] * 10000) => :biomass_bunch_harvested_cum_t_ha,
+    :biomass_bunch_harvested => (x -> sum(x) * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => :biomass_bunch_harvested_cum_t_ha,
 )
 
-1 - 179.1 / 184
-1 - 171.0 / 184
-
 p_bar_ffb_cum = data(df_ffb) * mapping(:window_duration => string, :biomass_bunch_harvested_cum_t_ha => "Cumulated FFB 2008-2026 (t ha⁻¹)", color=:rank_leaves_left => "Leaves", dodge_x=rank_leaves_left_aes) * visual(BarPlot) |> draw
-save("outputs/ffb_cum_all.png", p_bar_ffb_cum, px_per_unit=3)
+save("outputs/ffb_cum_all_new.png", p_bar_ffb_cum, px_per_unit=3)
 p_bar_ffb_cum_during_and_after_window = data(df_during_and_after_window) * mapping(:window_duration => string, :biomass_bunch_harvested_cum_t_ha => "Cumulated FFB July 2023-2026 (t ha⁻¹)", color=:rank_leaves_left => "Leaves", dodge_x=rank_leaves_left_aes) * visual(BarPlot) |> draw
-save("outputs/ffb_cum_during_and_after.png", p_bar_ffb_cum_during_and_after_window, px_per_unit=3)
+save("outputs/ffb_cum_during_and_after_new.png", p_bar_ffb_cum_during_and_after_window, px_per_unit=3)
 p_bar_ffb_cum_after_window = data(df_after_window) * mapping(:window_duration => string, :biomass_bunch_harvested_cum_t_ha => "Cumulated FFB 2025-2026 (t ha⁻¹)", color=:rank_leaves_left => "Leaves", dodge_x=rank_leaves_left_aes) * visual(BarPlot) |> draw
-save("outputs/ffb_cum_after.png", p_bar_ffb_cum_after_window, px_per_unit=3)
+save("outputs/ffb_cum_after_new.png", p_bar_ffb_cum_after_window, px_per_unit=3)
 
 
-df_leaf = filter(x -> x.organ == "Leaf", dfs_all)
-select!(df_leaf, findall(x -> any(!ismissing(i) for i in x), eachcol(df_leaf)))
-
+df_leaf = vcat([s["Leaf"] for s in simulations]...)
+df_leaf = leftjoin(df_leaf, meteo, on=:timestep)
+sort!(df_leaf, :timestep)
 
 # Count the number of leaves at the begining of the pruning treatment:
 # df_leaf_start_pruning = filter(x -> x.date == age_start[1] + Day(1) && x.window_duration == Month(6) && x.rank_leaves_left == 25, df_leaf)
