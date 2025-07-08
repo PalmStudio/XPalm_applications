@@ -5,7 +5,7 @@
 
 MAP = -17 # Months after planting for the first time-step (the seed is effectively 18 months before planting the palm into the field)
 
-meteo = CSV.read(joinpath(dirname(dirname(pathof(XPalmModel))), "0-data/meteo.csv"), DataFrame)
+meteo = CSV.read(joinpath(dirname(dirname(pathof(XPalm))), "0-data/meteo.csv"), DataFrame)
 
 extrema(meteo.date)
 # 2012 starts on 01-05, copying data from 01-01 to 01-04:
