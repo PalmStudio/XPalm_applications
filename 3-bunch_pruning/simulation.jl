@@ -1,14 +1,15 @@
-using XPalmModel, XPalmModel.Models, PlantSimEngine
+using XPalm, XPalm.Models, PlantSimEngine
 using MultiScaleTreeGraph, PlantMeteo
 using CSV, DataFrames, YAML
 using Dates
 using CairoMakie, AlgebraOfGraphics
 
+cd(@__DIR__)
 c = PlantMeteo.Constants()
 
 includet("leaf_pruning_model.jl")
 includet("model_mapping.jl")
-parameters = YAML.load_file(joinpath(dirname(@__FILE__), "0-data", "xpalm_parameters.yml"), dicttype=Dict{Symbol,Any})
+parameters = YAML.load_file(joinpath(dirname(@__FILE__), "0-data", "xpalm_parameters.yml"))
 
 meteo = CSV.read("0-data/meteo_PR_generated_2006_2025.csv", DataFrame)
 
@@ -47,20 +48,24 @@ out_vars = Dict{String,Any}(
     ),
 )
 
-simulations = DataFrame[]
+simulations = Dict{String,DataFrame}[]
 for i in combinations
-    parameters[:management][:manual_pruning] = Dict{Symbol,Any}(
-        :rank => i.rank,
-        :start_date => i.window[1],
-        :duration => i.window[2]
+    parameters["management"]["manual_pruning"] = Dict{String,Any}(
+        "rank" => i.rank,
+        "start_date" => i.window[1],
+        "duration" => i.window[2]
     )
 
-    palm = XPalmModel.Palm(initiation_age=0, parameters=parameters)
+    palm = XPalm.Palm(initiation_age=0, parameters=parameters)
     models = model_mapping_theft(palm)
-    out = PlantSimEngine.run!(palm.mtg, models, meteo_w, outputs=out_vars, executor=PlantSimEngine.SequentialEx(), check=false)
+    out = PlantSimEngine.run!(palm.mtg, models, meteo_w, outputs=out_vars, executor=PlantSimEngine.SequentialEx())
     df = PlantSimEngine.outputs(out, DataFrame, no_value=missing)
-    df[!, "rank_leaves_left"] .= i.rank
-    df[!, "window_duration"] .= i.window[2]
+
+    for (k, v) in df
+        v[!, "rank_leaves_left"] .= i.rank
+        v[!, "window_duration"] .= i.window[2]
+    end
+
     push!(simulations, df)
 end
 
