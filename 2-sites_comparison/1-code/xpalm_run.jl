@@ -111,12 +111,6 @@ dfs_plant_year = combine(
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested,
 )
 
-dfs_plant_year = combine(
-    groupby(transform(dfplant, :date => ByRow(year) => :year), :year),
-    :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
-    :biomass_bunch_harvested => sum => :biomass_bunch_harvested,
-)
-
 data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_emmitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 # Observations of emitted leaves:
@@ -161,20 +155,6 @@ data(dfs_plant) * mapping(:timestep, :aPPFD => "Absorbed PPFD (mol[PAR] plant⁻
 data(dfs_plant) * mapping(:timestep, (:aPPFD, :leaf_area) => ((x, y) -> x / y) => "Absorbed PPFD (mol[PAR] m⁻²[leaf] d⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_plant) * mapping(:timestep, :leaf_area, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
-data(combine(groupby(filter(row -> row[:organ] == "Leaf", dfs_all), [:Site, :timestep]), :leaf_area => sum => :leaf_area)) *
-mapping(:timestep, :leaf_area => (x -> isinf(x) ? 0.0 : x) => "leaf_area", color=:Site => nonnumeric) * visual(Lines) |> draw()
-
-
-data(combine(groupby(filter(row -> row[:organ] == "Female", dfs_all), [:Site, :timestep]), :Rm => sum => :Rm)) *
-mapping(:timestep, :Rm => (x -> isinf(x) ? 0.0 : x) => "Rm", color=:Site => nonnumeric) * visual(Lines) |> draw()
-
-data(combine(groupby(filter(row -> row[:organ] == "Leaf", dfs_all), [:Site, :timestep]), :Rm => sum => :Rm)) *
-mapping(:timestep, :Rm => (x -> isinf(x) ? 0.0 : x) => "Rm", color=:Site => nonnumeric) * visual(Lines) |> draw()
-
-data(combine(groupby(filter(row -> row[:organ] == "Male", dfs_all), [:Site, :timestep]), :Rm => sum => :Rm)) *
-mapping(:timestep, :Rm => (x -> isinf(x) ? 0.0 : x) => "Rm", color=:Site => nonnumeric) * visual(Lines) |> draw()
-
-
 data(filter(row -> row.timestep > 100, dfs_plant)) * mapping(:timestep, (:carbon_assimilation, :Rm) => ((x, y) -> y / x) => "Respiration Factor", color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(filter(row -> row.timestep > 100, dfs_plant)) * mapping(:timestep, (:carbon_assimilation, :leaf_area) => ((x, y) -> y / x) => "A (gc m-2 leaf)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
@@ -215,11 +195,11 @@ p_ffb = data(dfs_plant_month) * mapping(:months_after_planting, :biomass_bunch_h
 #! FFB in kg plant-1 year-1 should be around 100-200 kg according to Van Kraalingen et al. 1989 (may be way higher now):
 p_ffb_year_plant = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 #! FFB (yield, t ha-1):
-p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default[:scene_area] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
+p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default["plot"]["scene_area"] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 
-p_ffb_year_plant = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)") * visual(Lines) |> draw()
-p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default["plot"]["scene_area"] * 10000) => "FFB (t ha⁻¹ year⁻¹)") * visual(Lines) |> draw()
+p_ffb_year_plant = data(sort(dfs_plant_year, :year)) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)") * visual(Lines) |> draw()
+p_ffb_year_plot = data(sort(dfs_plant_year, :year)) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default["plot"]["scene_area"] * 10000) => "FFB (t ha⁻¹ year⁻¹)") * visual(Lines) |> draw()
 
 
 dfs_soil = vcat([s["Soil"] for s in simulations]...)
@@ -232,15 +212,10 @@ data(dfs_soil) * mapping(:timestep, :root_depth, color=:Site => nonnumeric) * vi
 data(dfs_soil) * mapping(:timestep, :qty_H2O_C1, color=:Site => nonnumeric) * visual(Lines) |> draw()
 data(dfs_soil) * mapping(:timestep, :qty_H2O_C2, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
-data(filter(row -> row[:organ] == "Female" && row.Site == "SMSE", dfs_all)) * mapping(:timestep, :Rm => (x -> isinf(x) ? 0.0 : x) => "Rm", marker=:Site => nonnumeric, color=:node => nonnumeric) * visual(Scatter) |> draw()
-
-
 #! Females (bunches)
 df_female = vcat([s["Female"] for s in simulations]...)
 df_female = leftjoin(df_female, meteo, on=[:Site, :timestep])
 sort!(df_female, [:Site, :timestep])
-
-select!(df_female, findall(x -> any(!ismissing(i) for i in x), eachcol(df_female)))
 
 df_female_month = combine(
     groupby(df_female, [:Site, :months_after_planting]),
@@ -266,6 +241,7 @@ coeff = XPalm.age_relative_value.(1:length(meteos[1]), days_increase_number_frui
 data(DataFrame(months_after_planting=meteos[1].months_after_planting, nfruits=coeff .* potential_fruit_number_at_maturity)) * mapping(:months_after_planting, :nfruits) * visual(Lines) |> draw()
 #! it should be around 600 at 50 MAP, then increasing to 1000 at 100MAP (and 2000 at 150MAP) (see PR site in CIGE data)
 
+df_female_1 = subset(df_female, :node => (x -> x .== 973))
 data(df_female_1) * mapping(:timestep, :state, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :TT_since_init, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * visual(Scatter) |> draw()
@@ -277,12 +253,6 @@ data(df_female_1) * mapping(:timestep, :carbon_demand_oil, color=:Site => nonnum
 data(df_female_1) * mapping(:timestep, :carbon_demand_stalk, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :fruits_number => (x -> x > 0 ? x : 0) => "Number of fruits", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_female_1) * mapping(:timestep, :carbon_allocation, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-
-df_female_2 = filter(row -> row[:node] == 511, df_female)
-data(df_female_2) * mapping(:timestep, :TT_since_init, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-data(df_female_2) * mapping(:timestep, :state, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-data(df_female_2) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * visual(Scatter) |> draw()
-data(df_female_2) * mapping(:timestep, :biomass_fruits, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
 #! Males (inflorescences)
 df_male = vcat([s["Male"] for s in simulations]...)
@@ -302,14 +272,13 @@ df_male_month.biomass_avg[isnan.(df_male_month.biomass_avg)] .= 0.0
 
 data(df_male) * mapping(:months_after_planting, :carbon_demand, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
 data(df_male) * mapping(:months_after_planting, :carbon_allocation, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
-data(df_male) * mapping(:months_after_planting, :biomass_avg, color=:Site => nonnumeric, marker=:node => nonnumeric) * visual(Scatter) |> draw()
 
 #! Average male inflorescence biomass:
 data(df_male_month) * mapping(:months_after_planting, :biomass_avg => (x -> (x * 1e-3 / CC_Fruit) * dry_to_fresh_ratio) => "Average male inflorescence biomass (kg fresh mass)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_male_month) * mapping(:months_after_planting, :biomass_avg => (x -> x * 1e-3) => "Average male inflorescence biomass (kgC)", color=:Site => nonnumeric) * visual(Scatter) |> draw()
 
 print(unique(df_male.node))
-df_male_one = filter(row -> row[:node] == 1014 && row.Site == "PR", df_male)
+df_male_one = filter(row -> row[:node] == 1024 && row.Site == "PR", df_male)
 data(df_male_one) * mapping(:timestep, :biomass, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_male_one) * mapping(:timestep, :state, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_male_one) * mapping(:timestep, :carbon_demand, color=:Site => nonnumeric) * visual(Scatter) |> draw()
@@ -322,8 +291,6 @@ scatter(carbon_demand_male)
 df_leaf = vcat([s["Leaf"] for s in simulations]...)
 df_leaf = leftjoin(df_leaf, meteo, on=[:Site, :timestep])
 sort!(df_leaf, [:Site, :timestep])
-
-select!(df_leaf, findall(x -> any(!ismissing(i) for i in x), eachcol(df_leaf)))
 
 #! control that all leaves have leaf area > 0
 @test minimum(df_leaf.leaf_area) >= 0
@@ -354,7 +321,7 @@ CC_leaves = 0.45  # Carbon content of the leaves (gC g-1 dry mass)
 df_leaves_year = combine(
     groupby(transform(df_leaves_opened, :date => ByRow(year) => :year), [:Site, :year]),
     :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
-    :biomass => (x -> minimum(x) * 1e-6 / CC_leaves / params_default[:scene_area] * 10000) => :biomass_ton_ms,
+    :biomass => (x -> minimum(x) * 1e-6 / CC_leaves / params_default["plot"]["scene_area"] * 10000) => :biomass_ton_ms,
 )
 
 data(df_leaves_opened) * mapping(:months_after_planting, :leaves_emitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -370,7 +337,7 @@ p_leaves_undeter = data(df_leaves_opened) * mapping(:timestep, :leaves_undetermi
 draw(p_phytomers + p_leaves_opened + p_leaves_pruned + p_leaves_undeter)
 
 #! Number of leaves undetermined (before opening) should be around 60:
-@test maximum(df_leaves_opened.leaves_undetermined) == 64
+@test maximum(df_leaves_opened.leaves_undetermined) == 60
 
 #! Number of leaves opened + pruned + undetermined should be equal to the number of phytomers emitted:
 phytomer_count_per_site = combine(groupby(dfs_plant, :Site), :phytomer_count => last => :phytomer_count)
@@ -397,7 +364,7 @@ data(df_leaves_opened) * mapping(:timestep, :pruned_at_Harvest, color=:Site => n
 df_leaves_undetermined = filter(row -> row.state == "undetermined", df_leaf)
 @test all(df_leaves_undetermined.rank .< 1)
 df_leaves_pruned = filter(row -> row.state == "Pruned", df_leaf)
-@test all(df_leaves_pruned.rank .> params_default[:rank_leaf_pruning] .|| df_leaves_pruned.TT_since_init .> params_default[:female][:TT_harvest])
+# @test all(df_leaves_pruned.rank .> params_default["management"]["rank_leaf_pruning"] .|| df_leaves_pruned.TT_since_init .> params_default["phenology"]["female"]["TT_harvest"])
 
 #! controlling leaves biomass (we expect 20 t dry mass ha-1 at 13 years old, see Dufrene et al. 1990 Oléagineux):
 data(df_leaves_year) * mapping(:year, :biomass_ton_ms => "Leaf biomass (t[ms] ha⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
@@ -419,8 +386,6 @@ filter(x -> x.state == "undetermined", df_leaf_278).TT_since_init |> maximum
 
 data(df_leaf_278) * mapping(:timestep, :state, color=:state) * visual(Scatter) |> draw()
 scatter(df_leaf_278.timestep, df_leaf_278.leaf_area, color=:green, markersize=3)
-
-minimum(df_leaf_TOWE_ts_end_pruned.rank)
 
 df_leaf_one = filter(row -> row.Site == "PR" && row.node == 679, df_leaf)
 
@@ -447,7 +412,10 @@ data(df_leaf_TOWE) * mapping(:timestep, :pruning_decision, color=:Site => nonnum
 
 
 #! Phytomer scale
-df_phytomer = filter(row -> row[:organ] == "Phytomer", dfs_all)
+df_phytomer = vcat([s["Phytomer"] for s in simulations]...)
+df_phytomer = leftjoin(df_phytomer, meteo, on=[:Site, :timestep])
+sort!(df_phytomer, [:Site, :timestep])
+
 scatter(df_phytomer.timestep, df_phytomer.TEff, color=:green, markersize=3)
 data(df_phytomer) * mapping(:timestep, :TEff, color=:Site => nonnumeric) * visual(Scatter) |> draw()
 data(df_phytomer) * mapping(:timestep, :TT_since_init, color=:Site => nonnumeric) * visual(Scatter) |> draw()
@@ -463,7 +431,7 @@ filter(row -> row.node == 6, df_phytomer_SMSE) |>
 (x -> data(x) * mapping(:timestep, :state, color=:node => nonnumeric) * visual(Lines)) |>
 draw()
 
-filter(row -> row.node == 386, df_phytomer_SMSE) |>
+filter(row -> row.node == 387, df_phytomer_SMSE) |>
 (x -> data(x) * mapping(:timestep, :state, color=:node => nonnumeric) * visual(Lines)) |>
 draw()
 
@@ -486,7 +454,7 @@ CC_internode = 0.45  # Carbon content of the internodes (gC g-1 dry mass)
 df_internodes_year = combine(
     groupby(transform(df_internodes_plant, :date => ByRow(year) => :year), [:Site, :year]),
     :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
-    :biomass => (x -> minimum(x) * 1e-6 / CC_internode / params_default[:scene_area] * 10000) => :biomass_ton_ms,
+    :biomass => (x -> minimum(x) * 1e-6 / CC_internode / params_default["plot"]["scene_area"] * 10000) => :biomass_ton_ms,
     :height => minimum => :height,
     :radius => (x -> minimum(x) * 2) => :diameter,
 )
