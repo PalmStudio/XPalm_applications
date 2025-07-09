@@ -30,7 +30,7 @@ begin
 
     params_TOWE = copy(params_default)
     # params_TOWE[:latitude] = 7.65
-    params_TOWE["plot"]["latitude"] = 7.00
+    params_TOWE["plot"]["latitude"] = 7.00 #! check why we can't use the true value in XPalm
     params_TOWE["plot"]["altitude"] = 15.5
 
     params = Dict("SMSE" => params_SMSE, "PR" => params_PRESCO, "TOWE" => params_TOWE,)
@@ -57,7 +57,7 @@ begin
             :carbon_assimilation, :reserve, :carbon_demand, :carbon_offer_after_allocation, :carbon_offer_after_rm, :leaf_area,
             :n_bunches_harvested, :biomass_bunch_harvested_cum, :n_bunches_harvested_cum, :TEff, :phytomer_count, :production_speed,
         ),
-        "RootSystem" => (:Rm,),
+        # "RootSystem" => (:Rm,),
         "Soil" => (:ftsw, :root_depth, :transpiration, :qty_H2O_C1, :qty_H2O_C2, :aPPFD),
     )
 
@@ -65,7 +65,7 @@ begin
     for m in meteos
         site = m[1].Site
         palm = XPalm.Palm(parameters=params[site])
-        df = xpalm(meteo, DataFrame, vars=out_vars, palm=palm)
+        df = xpalm(m, DataFrame, vars=out_vars, palm=palm)
         for (k, v) in df
             v[!, "Site"] .= site
         end
@@ -78,11 +78,11 @@ df_scene = vcat([s["Scene"] for s in simulations]...)
 df_scene = leftjoin(df_scene, meteo, on=[:Site, :timestep])
 sort!(df_scene, [:Site, :timestep])
 
-dfs_scene_months = combine(groupby(dfs_scene, [:Site, :months_after_planting]), :lai => mean => :lai)
+dfs_scene_months = combine(groupby(df_scene, [:Site, :months_after_planting]), :lai => mean => :lai)
 p_lai = data(dfs_scene_months) * mapping(:months_after_planting, :lai, color=:Site => nonnumeric) * visual(Lines)
 draw(p_lai)
 
-data(dfs_scene) * mapping(:timestep, :aPPFD => "Absorbed PPFD (MJ m⁻²[soil] d⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
+data(df_scene) * mapping(:timestep, :aPPFD => "Absorbed PPFD (MJ m⁻²[soil] d⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 #! Plant scale
 dfs_plant = vcat([s["Plant"] for s in simulations]...)
@@ -111,6 +111,11 @@ dfs_plant_year = combine(
     :biomass_bunch_harvested => sum => :biomass_bunch_harvested,
 )
 
+dfs_plant_year = combine(
+    groupby(transform(dfplant, :date => ByRow(year) => :year), :year),
+    :timestep => (x -> x[end] - x[1] + 1) => :nb_timesteps,
+    :biomass_bunch_harvested => sum => :biomass_bunch_harvested,
+)
 
 data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_emmitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
@@ -211,6 +216,10 @@ p_ffb = data(dfs_plant_month) * mapping(:months_after_planting, :biomass_bunch_h
 p_ffb_year_plant = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
 #! FFB (yield, t ha-1):
 p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default[:scene_area] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=:Site => nonnumeric) * visual(Lines) |> draw()
+
+
+p_ffb_year_plant = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-3 / CC_Fruit * dry_to_fresh_ratio) => "FFB (kg plant⁻¹ year⁻¹)") * visual(Lines) |> draw()
+p_ffb_year_plot = data(dfs_plant_year) * mapping(:year, :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / params_default["plot"]["scene_area"] * 10000) => "FFB (t ha⁻¹ year⁻¹)") * visual(Lines) |> draw()
 
 
 dfs_soil = vcat([s["Soil"] for s in simulations]...)
