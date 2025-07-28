@@ -6,9 +6,10 @@ using PlantMeteo
 using Dates
 using Statistics
 
-includet("mapping.jl")
+cd(@__DIR__)
+include("mapping.jl")
 
-meteo = CSV.read("0-data/Meteo_predictions_all_sites_cleaned.csv", DataFrame)
+meteo = CSV.read(joinpath(@__DIR__, "../0-data/Meteo_predictions_all_sites_cleaned.csv"), DataFrame)
 meteos = [Weather(i) for i in groupby(meteo, :Site)]
 
 df_plot = transform(groupby(meteo, :Site), :Precipitations => cumsum => :cumulative_precipitations, :Tmin => cumsum => :Tmin_cumulative, :Tmax => cumsum => :Tmax_cumulative)
@@ -18,7 +19,7 @@ data(df_plot) * mapping(:date, :Tmin_cumulative, color=:Site => nonnumeric) * vi
 data(df_plot) * mapping(:date, :Tmax_cumulative, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 begin
-    params_default = YAML.load_file("0-data/xpalm_parameters.yml")
+    params_default = YAML.load_file(joinpath(@__DIR__, "../0-data/xpalm_parameters.yml"))
 
     params_SMSE = copy(params_default)
     params_SMSE["plot"]["latitude"] = 2.93416
@@ -114,7 +115,7 @@ dfs_plant_year = combine(
 data(dfs_plant_month) * mapping(:months_after_planting, :phytomer_emmitted, color=:Site => nonnumeric) * visual(Lines) |> draw()
 
 # Observations of emitted leaves:
-nb_leaves_emitted_obs = CSV.read("0-data/validation/phyllochron_observations.csv", DataFrame)
+nb_leaves_emitted_obs = CSV.read(joinpath(@__DIR__, "../0-data/validation/phyllochron_observations.csv"), DataFrame)
 sort!(nb_leaves_emitted_obs, [:site, :genotype, :months_after_planting])
 transform!(groupby(nb_leaves_emitted_obs, [:site, :genotype]), :nb_leaves_emitted => cumsum => :nb_leaves_emitted_cum)
 
