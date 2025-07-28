@@ -1,4 +1,4 @@
-using XPalm, XPalm.Models, PlantSimEngine
+using XPalm, XPalm.Models, PlantSimEngine # Need at least XPalm v0.4.0
 using MultiScaleTreeGraph, PlantMeteo
 using CSV, DataFrames, YAML
 using Dates
@@ -7,8 +7,8 @@ using CairoMakie, AlgebraOfGraphics
 cd(@__DIR__)
 c = PlantMeteo.Constants()
 
-includet("leaf_pruning_model.jl")
-includet("model_mapping.jl")
+include("leaf_pruning_model.jl")
+include("model_mapping.jl")
 parameters = YAML.load_file(joinpath(dirname(@__FILE__), "0-data", "xpalm_parameters.yml"))
 
 meteo = CSV.read("0-data/meteo_PR_generated_2006_2025.csv", DataFrame)
@@ -160,6 +160,25 @@ p_ffb_cum_plant =
     visual(Lines) + planting_aes |>
     draw(figure=(size=(800, 600),))
 save("outputs/ffb_year_cum_plant_new.png", p_ffb_cum_plant, px_per_unit=3)
+
+ref_ffb = dfs_plant_month[dfs_plant_month.rank_leaves_left .== 50 .&& dfs_plant_month.window_duration .== first(dfs_plant_month.window_duration), :biomass_bunch_harvested_cum]
+dfs_plant_month_rel = transform(groupby(dfs_plant_month, [:rank_leaves_left, :window_duration]), :biomass_bunch_harvested_cum => (x -> x ./ ref_ffb) => :biomass_bunch_harvested_cum_rel)
+dfs_plant_month_rel_start_pruning_to_end = filter(x -> x.date > minimum(age_start), dfs_plant_month_rel)
+p_ffb_cum_plant_rel =
+    data(dfs_plant_month_rel_start_pruning_to_end) *
+    mapping(:months_after_planting => "Months after planting", :biomass_bunch_harvested_cum_rel => "Relative cumulated FFB (kg plant⁻¹)", color=rank_leaves_left_aes, col=:window_duration) *
+    visual(Lines) |>
+    draw(figure=(size=(800, 600),))
+    # draw(figure=(size=(800, 600),), axis=(; limits=(nothing, (0,1.0))))
+
+# subset(dfs_plant_month_rel_start_pruning_to_end, :rank_leaves_left => (x -> x .== 25), :window_duration => (x -> x .== Month(6)))
+combine(
+    groupby(subset(dfs_plant_month_rel_start_pruning_to_end, :rank_leaves_left => (x -> x .== 25)), :window_duration),
+    :biomass_bunch_harvested_cum_rel => (x -> 1. .- last(x)) => :biomass_bunch_harvested_cum_rel
+    )
+
+
+save("outputs/ffb_year_cum_plant_new_relative.png", p_ffb_cum_plant_rel, px_per_unit=3)
 
 #! FFB (yield, t ha-1):
 p_ffb_year_plot = data(dfs_plant_year) * mapping(:year => Date => "Date", :biomass_bunch_harvested => (x -> x * 1e-6 / CC_Fruit * dry_to_fresh_ratio / parameters["plot"]["scene_area"] * 10000) => "FFB (t ha⁻¹ year⁻¹)", color=rank_leaves_left_aes, col=:window_duration) * visual(Lines) |> draw()
